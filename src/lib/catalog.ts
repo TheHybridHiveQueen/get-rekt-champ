@@ -33,6 +33,7 @@ export type Meme = {
   defend: number;
   crown: number;
   createdAt: string;
+  gifUrl: string;
 };
 
 export type Tally = {
@@ -48,6 +49,7 @@ export type Draft = {
   lineB: string;
   aliasA: string;
   aliasB: string;
+  gifUrl: string;
 };
 
 export const LANES: { id: Lane | "all"; label: string }[] = [
@@ -333,6 +335,26 @@ export const SEEDS: Seed[] = [
   { key: "oprah-2", champ: "oprah", format: "quote", a: "oprah-q1", b: "", aliasA: "Cosmic", aliasB: "Usher", rekt: 84, defend: 3, crown: 21, mins: 1500 },
   { key: "ronaldo-1", champ: "ronaldo", format: "impact", a: "ronaldo-t1", b: "ronaldo-b1", aliasA: "Rowdy", aliasB: "Gavel", rekt: 155, defend: 17, crown: 23, mins: 64 },
   { key: "ronaldo-2", champ: "ronaldo", format: "score", a: "ronaldo-s1", b: "", aliasA: "Neon", aliasB: "Pigeon", rekt: 49, defend: 8, crown: 6, mins: 2800 },
+];
+
+export type HouseLoop = {
+  id: string;
+  lane: Lane;
+  champ: string;
+  src: string;
+  alt: string;
+};
+
+export const HOUSE_LOOPS: HouseLoop[] = [
+  { id: "rocket", lane: "nerds", champ: "elon", src: "/gifs/rocket.gif", alt: "A toy rocket races a phone that will not stop posting." },
+  { id: "headset", lane: "nerds", champ: "zuck", src: "/gifs/headset.gif", alt: "A headset floats while a pair of shoes walks off without it." },
+  { id: "jacket", lane: "nerds", champ: "jensen", src: "/gifs/jacket.gif", alt: "A leather jacket takes the stage and the sign says sold out." },
+  { id: "podium", lane: "titans", champ: "trump", src: "/gifs/podium.gif", alt: "A gold podium inflates the word biggest until the stamp hits." },
+  { id: "table", lane: "titans", champ: "putin", src: "/gifs/table.gif", alt: "A meeting table stretches until the other chair is a speck." },
+  { id: "boxes", lane: "titans", champ: "bezos", src: "/gifs/boxes.gif", alt: "Cardboard boxes stack themselves into a wobbly throne." },
+  { id: "eras", lane: "culture", champ: "swift", src: "/gifs/eras.gif", alt: "Calendar eras flip so fast a cash register dings." },
+  { id: "prize", lane: "culture", champ: "beast", src: "/gifs/prize.gif", alt: "Tickets rain onto a challenge button that cannot sit still." },
+  { id: "brow", lane: "culture", champ: "rock", src: "/gifs/brow.gif", alt: "One eyebrow lifts a gold belt into the air." },
 ];
 
 export function champBy(slug: string): Champ | undefined {

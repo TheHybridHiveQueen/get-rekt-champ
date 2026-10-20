@@ -50,6 +50,7 @@ function spin(slug: string, format: Format, aliasA: string, aliasB: string): Dra
       lineB: pick(linesFor(slug, "bottom")).text,
       aliasA,
       aliasB,
+      gifUrl: "",
     };
   }
   return {
@@ -59,6 +60,7 @@ function spin(slug: string, format: Format, aliasA: string, aliasB: string): Dra
     lineB: "",
     aliasA,
     aliasB,
+    gifUrl: "",
   };
 }
 
@@ -113,6 +115,7 @@ function ComposerForm({
     ...draftFor(starter, "impact"),
     aliasA: "Velvet",
     aliasB: "Goblin",
+    gifUrl: "",
   }));
 
   const preview = useMemo<Meme>(
@@ -128,6 +131,7 @@ function ComposerForm({
       defend: 0,
       crown: 0,
       createdAt: "2026-01-01T00:00:00Z",
+      gifUrl: draft.gifUrl,
     }),
     [draft],
   );
@@ -150,7 +154,7 @@ function ComposerForm({
             Stamp a roast
           </Dialog.Title>
           <Dialog.Description className="mt-2 max-w-sm text-sm text-paper/70">
-            House lines only. Public names, comedy-club rules, no freestyle cruelty.
+            House lines only. Optional handmade GIF. Public names, comedy-club rules.
           </Dialog.Description>
         </div>
         <Dialog.Close className="inline-flex size-11 items-center justify-center rounded-full border-2 border-paper/40 text-paper" aria-label="Close">
@@ -216,7 +220,10 @@ function ComposerForm({
         <button
           type="button"
           onClick={() =>
-            setDraft((current) => spin(current.champSlug, current.format, pick(ALIAS_A), pick(ALIAS_B)))
+            setDraft((current) => ({
+              ...spin(current.champSlug, current.format, pick(ALIAS_A), pick(ALIAS_B)),
+              gifUrl: current.gifUrl,
+            }))
           }
           className="inline-flex h-11 items-center gap-2 rounded-full border-2 border-gold px-4 font-semibold text-gold"
         >
@@ -268,6 +275,24 @@ function ComposerForm({
           Next byline
         </button>
       </div>
+
+      <label className="mt-4 block text-sm">
+        <span className="font-display tracking-widest uppercase">Handmade GIF</span>
+        <input
+          type="url"
+          inputMode="url"
+          name="gif"
+          autoComplete="off"
+          spellCheck={false}
+          placeholder="https://yoursite.com/hand-drawn.gif"
+          value={draft.gifUrl}
+          onChange={(event) => setDraft((current) => ({ ...current, gifUrl: event.target.value }))}
+          className="mt-2 h-11 w-full rounded-full border-2 border-paper/30 bg-ink px-4 text-paper"
+        />
+        <span className="mt-2 block text-paper/70">
+          Optional. A direct .gif you drew, filmed, or cut by hand. Leave blank for type only.
+        </span>
+      </label>
 
       {error ? <p className="mt-3 text-sm text-paper">{error}</p> : null}
 

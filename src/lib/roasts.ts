@@ -28,10 +28,11 @@ type MemeRow = {
   defend: number;
   crown: number;
   created_at: string;
+  gif_url: string;
 };
 
 const MEME_RETURNING = `
-  id, champ_slug, format, line_a, line_b, alias_a, alias_b, rekt, defend, crown,
+  id, champ_slug, format, line_a, line_b, alias_a, alias_b, rekt, defend, crown, gif_url,
   to_char(created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at
 `;
 
@@ -48,6 +49,7 @@ function toMeme(row: MemeRow): Meme {
     defend: row.defend,
     crown: row.crown,
     createdAt: row.created_at,
+    gifUrl: row.gif_url ?? "",
   };
 }
 
@@ -129,7 +131,26 @@ function assertDraft(data: unknown): Draft {
       throw new Error("That score is not in the house book.");
     }
   }
-  return { champSlug, format, lineA, lineB, aliasA, aliasB };
+  return { champSlug, format, lineA, lineB, aliasA, aliasB, gifUrl: handmadeGif(d.gifUrl) };
+}
+
+function handmadeGif(value: unknown): string {
+  if (value == null || value === "") return "";
+  if (typeof value !== "string") throw new Error("That GIF link is not a link.");
+  const trimmed = value.trim();
+  if (trimmed.length > 400) throw new Error("That GIF link is too long.");
+  let url: URL;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    throw new Error("Paste a direct https link ending in .gif.");
+  }
+  if (url.protocol !== "https:" || url.username || url.password) {
+    throw new Error("Handmade GIFs have to be a plain https link.");
+  }
+  const path = url.pathname.toLowerCase();
+  if (!path.endsWith(".gif")) throw new Error("Paste a direct .gif file you made by hand.");
+  return url.toString();
 }
 
 function assertVote(data: unknown): { id: number; token: string; kind: Kind } {
@@ -150,7 +171,7 @@ export const listMemes = createServerFn({ method: "GET" }).handler(async () => {
   const sql = await getSql();
   await ensureSeed(sql);
   const memes = await sql<MemeRow>`
-    select id, champ_slug, format, line_a, line_b, alias_a, alias_b, rekt, defend, crown,
+    select id, champ_slug, format, line_a, line_b, alias_a, alias_b, rekt, defend, crown, gif_url,
       to_char(created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at
     from memes
     order by created_at desc
@@ -183,10 +204,10 @@ export const createMeme = createServerFn({ method: "POST" })
     const sql = await getSql();
     try {
       const rows = await sql.query<MemeRow>(
-        `insert into memes (champ_slug, format, line_a, line_b, alias_a, alias_b)
-         values ($1, $2, $3, $4, $5, $6)
+        `insert into memes (champ_slug, format, line_a, line_b, alias_a, alias_b, gif_url)
+         values ($1, $2, $3, $4, $5, $6, $7)
          returning ${MEME_RETURNING}`,
-        [data.champSlug, data.format, data.lineA, data.lineB, data.aliasA, data.aliasB],
+        [data.champSlug, data.format, data.lineA, data.lineB, data.aliasA, data.aliasB, data.gifUrl],
       );
       const row = rows[0];
       if (!row) throw new Error("The stamp did not stick.");

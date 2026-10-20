@@ -1,8 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { getRouteApi } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { Plus, Ticket } from "lucide-react";
 import { Composer } from "@/components/composer";
+import { HouseReel } from "@/components/house-reel";
 import { MemeCard } from "@/components/meme-card";
+import { SiteFooter } from "@/components/site-footer";
+import { IDEA_CREDIT } from "@/lib/credit";
+import { loadNoise, playPit, setNoise } from "@/lib/pit-sound";
 import {
   CHAMPS,
   LANES,
@@ -41,6 +46,7 @@ export function Board() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [noise, setNoiseOn] = useState(true);
 
   useEffect(() => {
     let booth = localStorage.getItem(TOKEN_KEY);
@@ -49,6 +55,7 @@ export function Board() {
       localStorage.setItem(TOKEN_KEY, booth);
     }
     setToken(booth);
+    setNoiseOn(loadNoise());
     let cancel = false;
     myVotes({ data: booth })
       .then((rows) => {
@@ -105,6 +112,7 @@ export function Board() {
           row.slug === result.meme.champSlug ? { ...row, rekt: row.rekt + (result.meme.rekt - meme.rekt) } : row,
         ),
       );
+      if (result.myKind) playPit(result.myKind);
     } catch (err) {
       setNote(messageOf(err));
     } finally {
@@ -127,6 +135,7 @@ export function Board() {
       });
       setComposerOpen(false);
       setNote("Stamped. The pit can see it.");
+      playPit("stamp");
     } catch (err) {
       setError(messageOf(err));
     } finally {
@@ -149,10 +158,23 @@ export function Board() {
             </h1>
           </div>
           <p className="max-w-sm text-sm leading-relaxed text-paper/75 sm:text-right">
-            T-rated satire of public names. Spin a house line, stamp it, and the board keeps it. No private
-            people, no threats, no cruelty Olympics.
+            T-rated satire of public names. House lines, handmade GIFs, and a wall that keeps the stamp. {IDEA_CREDIT}.
           </p>
         </div>
+        <nav aria-label="Site" className="mx-auto flex max-w-6xl gap-4 px-4 pb-4 text-sm">
+          <Link to="/press" className="text-paper underline decoration-rekt underline-offset-4">
+            Press release
+          </Link>
+          <Link to="/roadmap" className="text-paper underline decoration-rekt underline-offset-4">
+            Roadmap
+          </Link>
+          <a
+            href="https://github.com/TheHybridHiveQueen/get-rekt-champ"
+            className="text-paper underline decoration-rekt underline-offset-4"
+          >
+            Public source
+          </a>
+        </nav>
       </header>
 
       <div className="mx-auto grid max-w-6xl gap-6 px-4 py-5 lg:grid-cols-[15rem_minmax(0,1fr)_15rem]">
@@ -226,6 +248,16 @@ export function Board() {
             <div className="flex gap-2">
               <FilterChip on={sort === "fresh"} label="Fresh" onClick={() => setSort("fresh")} />
               <FilterChip on={sort === "hot"} label="Hottest" onClick={() => setSort("hot")} />
+              <FilterChip
+                on={noise}
+                label={noise ? "Noise on" : "Noise off"}
+                onClick={() => {
+                  const next = !noise;
+                  setNoise(next);
+                  setNoiseOn(next);
+                  if (next) playPit("loop");
+                }}
+              />
             </div>
             <p className="text-sm text-paper/60 tabular-nums">{total} stamps on the wall</p>
           </div>
@@ -235,6 +267,16 @@ export function Board() {
               {note}
             </p>
           ) : null}
+
+          <HouseReel
+            lane={lane}
+            champ={champ}
+            onPick={(loop) => {
+              playPit("loop");
+              setChamp(loop.champ);
+              setLane(loop.lane);
+            }}
+          />
 
           {featured ? (
             <MemeCard
@@ -292,12 +334,14 @@ export function Board() {
           <div className="mt-4 rounded-card border-2 border-paper/20 p-4 text-sm leading-relaxed text-paper/75">
             <p className="font-display text-xs tracking-widest text-paper uppercase">House rules</p>
             <p className="mt-2">
-              Big public names only, played for laughs. You remix the house book so the pit stays T-rated. Tap a
-              reaction once. Tap it again to take it back.
+              Big public names only, played for laughs. Remix the house book. Hang a handmade GIF if you made one.
+              Tap a reaction once. Tap it again to take it back.
             </p>
           </div>
         </aside>
       </div>
+
+      <SiteFooter />
 
       <button
         type="button"

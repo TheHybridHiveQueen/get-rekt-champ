@@ -21,6 +21,7 @@ import {
   Trophy,
   type LucideIcon,
 } from "lucide-react";
+import { useState } from "react";
 import { champBy, type Kind, type Meme } from "@/lib/catalog";
 
 const ICONS: Record<string, LucideIcon> = {
@@ -112,6 +113,7 @@ export function MemeCard({
             <p className="mt-3 font-body text-2xl leading-snug text-pretty sm:text-3xl">{meme.lineA}</p>
           </>
         )}
+        <HandmadeGif url={meme.gifUrl} />
       </div>
 
       <footer className="space-y-3 border-t-2 border-ink/15 pt-3">
@@ -152,6 +154,22 @@ export function MemeCard({
         )}
       </footer>
     </article>
+  );
+}
+
+function HandmadeGif({ url }: { url: string }) {
+  const [hidden, setHidden] = useState(false);
+  if (!url || hidden) return null;
+  return (
+    <img
+      src={url}
+      alt="Handmade GIF"
+      loading="lazy"
+      decoding="async"
+      referrerPolicy="no-referrer"
+      onError={() => setHidden(true)}
+      className="mx-auto mt-5 max-h-64 w-full border-2 border-ink object-contain"
+    />
   );
 }
 

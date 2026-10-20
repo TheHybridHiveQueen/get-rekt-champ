@@ -1,0 +1,12 @@
+/* TEAM */
+Idea: TheHybridHiveQueen
+Credit: Idea by the Brain of TheHybridHiveQueen
+Site: https://github.com/TheHybridHiveQueen
+Contact: https://github.com/TheHybridHiveQueen/get-rekt-champ
+
+/* SITE */
+Name: Get Rekt Champ
+Language: English
+Doctype: HTML
+Components: React, handmade GIFs
+Standards: HTML, CSS, sitemap, robots
