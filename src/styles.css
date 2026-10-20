@@ -1,0 +1,121 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #14110e;
+  --color-ink-2: #221c17;
+  --color-paper: #f3ecdf;
+  --color-paper-2: #e6dccb;
+  --color-rekt: #d63a28;
+  --color-gold: #e2b043;
+  --font-display: "Archivo Black", Impact, sans-serif;
+  --font-body: "Literata", Georgia, serif;
+  --radius-card: 1.15rem;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-ink);
+    color: var(--color-paper);
+    font-family: var(--font-body);
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+}
+
+@layer components {
+  .stamp-card {
+    border: 2px solid var(--color-ink);
+    background-color: var(--color-paper);
+    background-image: radial-gradient(var(--color-paper-2) 0.7px, transparent 0.7px);
+    background-size: 8px 8px;
+    color: var(--color-ink);
+    box-shadow: 6px 6px 0 0 var(--color-rekt);
+  }
+
+  .stamp-card.is-main {
+    box-shadow: 8px 8px 0 0 var(--color-gold);
+  }
+
+  .mono {
+    display: grid;
+    width: 3.25rem;
+    height: 3.25rem;
+    place-items: center;
+    border: 2px solid var(--color-ink);
+    font-family: var(--font-display);
+    font-size: 1rem;
+    line-height: 1;
+    letter-spacing: 0.02em;
+  }
+
+  .mono-stripes {
+    background: repeating-linear-gradient(
+      -45deg,
+      var(--color-gold),
+      var(--color-gold) 6px,
+      var(--color-paper) 6px,
+      var(--color-paper) 12px
+    );
+    color: var(--color-ink);
+  }
+
+  .mono-dots {
+    background-color: var(--color-paper);
+    background-image: radial-gradient(var(--color-ink) 1.1px, transparent 1.2px);
+    background-size: 8px 8px;
+    color: var(--color-ink);
+  }
+
+  .mono-grid {
+    background-color: var(--color-gold);
+    background-image:
+      linear-gradient(var(--color-ink) 1px, transparent 1px),
+      linear-gradient(90deg, var(--color-ink) 1px, transparent 1px);
+    background-size: 10px 10px;
+    color: var(--color-ink);
+  }
+
+  .mono-solid {
+    background: var(--color-rekt);
+    color: var(--color-paper);
+  }
+
+  .mono-ink {
+    background: var(--color-ink);
+    color: var(--color-gold);
+  }
+
+  .pit-fab {
+    box-shadow: 6px 6px 0 0 var(--color-gold);
+  }
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .stamp-card {
+    transition: transform 180ms ease, box-shadow 180ms ease;
+  }
+
+  .stamp-card:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 9px 9px 0 0 var(--color-rekt);
+  }
+
+  .stamp-card.is-main:hover {
+    box-shadow: 11px 11px 0 0 var(--color-gold);
+  }
+}
