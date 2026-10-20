@@ -19,7 +19,7 @@ const SHIPPED = [
   "House-book stamps: poster, quote, and score. No freestyle caption box.",
   "Reactions: Rekt, Defend, Crown.",
   "Handmade GIF links on a stamp. Direct https .gif files only.",
-  "Nine house loops on the wall, three per lane, plus pit noise you can mute.",
+  "A human-made meme GIF on every card, pulled from public meme hosts.",
 ];
 
 const NEXT = [
@@ -59,8 +59,7 @@ function Roadmap() {
           Handmade GIFs on every tab.
         </h1>
         <p className="mt-4 text-lg leading-relaxed text-paper/80">
-          {IDEA_CREDIT}. The starter reel is three looping gags for Nerds, three for Titans, and three for Culture.
-          Everybody plays the whole set.
+          {IDEA_CREDIT}. Every card carries a human-made meme of that public name. Nerds, titans, and culture each have their own set.
         </p>
         <Section title="Now" items={SHIPPED} />
         <Section title="Next" items={NEXT} />

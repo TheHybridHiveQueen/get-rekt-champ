@@ -22,7 +22,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useState } from "react";
-import { champBy, type Kind, type Meme } from "@/lib/catalog";
+import { champBy, CARD_MEMES, type Kind, type Meme } from "@/lib/catalog";
 
 const ICONS: Record<string, LucideIcon> = {
   elon: Rocket,
@@ -113,7 +113,7 @@ export function MemeCard({
             <p className="mt-3 font-body text-2xl leading-snug text-pretty sm:text-3xl">{meme.lineA}</p>
           </>
         )}
-        <HandmadeGif url={meme.gifUrl} />
+        <HandmadeGif url={meme.gifUrl || CARD_MEMES[meme.champSlug]?.src || ""} alt={meme.gifUrl ? "Handmade GIF" : CARD_MEMES[meme.champSlug]?.alt || "Meme"} />
       </div>
 
       <footer className="space-y-3 border-t-2 border-ink/15 pt-3">
@@ -157,16 +157,15 @@ export function MemeCard({
   );
 }
 
-function HandmadeGif({ url }: { url: string }) {
+function HandmadeGif({ url, alt }: { url: string; alt: string }) {
   const [hidden, setHidden] = useState(false);
   if (!url || hidden) return null;
   return (
     <img
       src={url}
-      alt="Handmade GIF"
+      alt={alt}
       loading="lazy"
       decoding="async"
-      referrerPolicy="no-referrer"
       onError={() => setHidden(true)}
       className="mx-auto mt-5 max-h-64 w-full border-2 border-ink object-contain"
     />

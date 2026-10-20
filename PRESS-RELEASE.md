@@ -9,7 +9,7 @@ A community gag board lets anyone stamp a T-rated roast of a public name, and ha
 
 **Get Rekt Champ** is a public parody wall for the biggest names on the planet: tech nerds, political titans, and culture main characters. Visitors spin lines from a house book, stamp the combo, and react with Rekt, Defend, or Crown. The jokes stay inside comedy-club rules. Private people, threats, and cruelty are not the bit.
 
-Handmade GIFs are in. A stamp can carry a direct `.gif` link the stamper filmed, drew, or cut themselves. The house also ships a starter reel of looping gags, three on every lane, so the wall is pictures and noise, not only type.
+Handmade GIFs are in. Every card starts with a human-made meme of that public name. A stamp can also carry a direct `.gif` link someone filmed, drew, or cut themselves.
 
 Idea by the Brain of TheHybridHiveQueen. The project is open source under the MIT license so the house book can grow by pull request.
 

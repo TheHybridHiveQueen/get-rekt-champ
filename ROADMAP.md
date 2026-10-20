@@ -1,6 +1,6 @@
 # Roadmap
 
-Idea by the Brain of TheHybridHiveQueen. The starter reel is three looping gags for Nerds, three for Titans, and three for Culture. Everybody plays the whole set.
+Idea by the Brain of TheHybridHiveQueen. Every card carries a human-made meme of that public name.
 
 ## Now
 
@@ -8,7 +8,7 @@ Idea by the Brain of TheHybridHiveQueen. The starter reel is three looping gags 
 - House-book stamps: poster, quote, and score. No freestyle caption box.
 - Reactions: Rekt, Defend, Crown.
 - Handmade GIF links on a stamp. Direct https `.gif` files only.
-- Nine house loops on the wall, three per lane, plus pit noise you can mute.
+- A human-made meme GIF on every card.
 
 ## Next
 

@@ -1,6 +1,6 @@
 # Get Rekt Champ
 
-A T-rated parody pit. Pick a public name, spin a line from the house book, and stamp it on the shared wall. Hang a handmade GIF if you made one. The lanes already loop three house gags each.
+A T-rated parody pit. Pick a public name, spin a line from the house book, and stamp it on the shared wall. Every card already shows a human-made meme of that name. Hang your own GIF on top if you made one.
 
 **Idea by the Brain of TheHybridHiveQueen.**
 
@@ -32,7 +32,7 @@ The app listens on port 8080. With no `DATABASE_URL`, it uses an embedded Postgr
 
 ## Add a joke
 
-New roasts land in [`src/lib/catalog.ts`](src/lib/catalog.ts). Add a champ, or add top / bottom / quote / score lines for someone already on the roster, and open a pull request. Keep it short, silly, and inside the house rules. Extra GIF loops can land in `public/gifs` the same way.
+New roasts land in [`src/lib/catalog.ts`](src/lib/catalog.ts). Add a champ, or add top / bottom / quote / score lines for someone already on the roster, and open a pull request. Keep it short, silly, and inside the house rules. Card memes are listed next to the roster in that same file.
 
 ## License
 

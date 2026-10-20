@@ -46,9 +46,7 @@ function Press() {
             Private people, threats, and cruelty are not the bit.
           </p>
           <p>
-            Handmade GIFs are in. A stamp can carry a direct <code>.gif</code> link the stamper filmed, drew, or cut
-            themselves. The house also ships a starter reel of looping gags, three on every lane, so the wall is
-            pictures and noise, not only type.
+            Handmade GIFs are in. Every card starts with a human-made meme of that public name. A stamp can also carry a direct <code>.gif</code> link someone filmed, drew, or cut themselves.
           </p>
           <p>
             {IDEA_CREDIT}. The project is open source under the MIT license so the house book can grow by pull

@@ -345,17 +345,35 @@ export type HouseLoop = {
   alt: string;
 };
 
-export const HOUSE_LOOPS: HouseLoop[] = [
-  { id: "rocket", lane: "nerds", champ: "elon", src: "/gifs/rocket.gif", alt: "A toy rocket races a phone that will not stop posting." },
-  { id: "headset", lane: "nerds", champ: "zuck", src: "/gifs/headset.gif", alt: "A headset floats while a pair of shoes walks off without it." },
-  { id: "jacket", lane: "nerds", champ: "jensen", src: "/gifs/jacket.gif", alt: "A leather jacket takes the stage and the sign says sold out." },
-  { id: "podium", lane: "titans", champ: "trump", src: "/gifs/podium.gif", alt: "A gold podium inflates the word biggest until the stamp hits." },
-  { id: "table", lane: "titans", champ: "putin", src: "/gifs/table.gif", alt: "A meeting table stretches until the other chair is a speck." },
-  { id: "boxes", lane: "titans", champ: "bezos", src: "/gifs/boxes.gif", alt: "Cardboard boxes stack themselves into a wobbly throne." },
-  { id: "eras", lane: "culture", champ: "swift", src: "/gifs/eras.gif", alt: "Calendar eras flip so fast a cash register dings." },
-  { id: "prize", lane: "culture", champ: "beast", src: "/gifs/prize.gif", alt: "Tickets rain onto a challenge button that cannot sit still." },
-  { id: "brow", lane: "culture", champ: "rock", src: "/gifs/brow.gif", alt: "One eyebrow lifts a gold belt into the air." },
-];
+const giphy = (id: string) => `https://media.giphy.com/media/${id}/giphy.gif`;
+
+export const CARD_MEMES: Record<string, { src: string; alt: string }> = {
+  elon: { src: giphy("oImOwaZ34b8K70aQ6B"), alt: "Cybertruck window demo." },
+  zuck: { src: giphy("1zKdb4WSHgY4QKAsjo"), alt: "Mark Zuckerberg at a microphone." },
+  altman: { src: giphy("3oz8xQTEUmXNkJhbKE"), alt: "Sam Altman talking on a stage." },
+  jensen: { src: giphy("prDgqjXzzOTevzYon7"), alt: "Jensen Huang in a leather jacket holding a graphics card." },
+  gates: { src: giphy("l0K4mbH4lKBhAPFU4"), alt: "Bill Gates dabbing." },
+  cook: { src: giphy("3oz8xLrKEjbAbaqUxO"), alt: "Tim Cook giving a thumbs up at an Apple event." },
+  nadella: { src: giphy("l2YWkKM59tbkhIf9C"), alt: "Satya Nadella presenting." },
+  trump: { src: giphy("lUAXivqATIe52"), alt: "Donald Trump pointing while he talks." },
+  putin: { src: giphy("8m2ywIdT8EYAuP8YND"), alt: "Vladimir Putin seated at a very long table." },
+  bezos: { src: giphy("3o84UaEllewTfnbNGo"), alt: "Jeff Bezos laughing." },
+  buffett: { src: giphy("1guRIREY9aVoblYv5gA"), alt: "Warren Buffett riding in a car." },
+  biden: { src: giphy("CJOwG4l6YselROC0UP"), alt: "Joe Biden with an ice cream cone." },
+  swift: { src: giphy("3o6nUZAloQQ8vA2xhe"), alt: "Taylor Swift dancing in Shake It Off." },
+  beast: { src: giphy("Ko261YbCdpOSVgOsaq"), alt: "MrBeast running." },
+  rock: { src: giphy("rYVUEwrv3H5pC"), alt: "Dwayne Johnson raising an eyebrow." },
+  oprah: { src: giphy("QXPdeQwJYXv6wKXy2G"), alt: "Oprah Winfrey saying you get a car." },
+  ronaldo: { src: giphy("FKKT0Ro1ZuuYivPgEs"), alt: "Cristiano Ronaldo celebrating." },
+};
+
+export const HOUSE_LOOPS: HouseLoop[] = Object.entries(CARD_MEMES).map(([champ, meme]) => ({
+  id: champ,
+  lane: champBy(champ)?.lane ?? "culture",
+  champ,
+  src: meme.src,
+  alt: meme.alt,
+}));
 
 export function champBy(slug: string): Champ | undefined {
   return CHAMPS.find((c) => c.slug === slug);
