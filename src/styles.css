@@ -1,15 +1,15 @@
 @import "tailwindcss";
 
 @theme {
-  --color-ink: #14110e;
-  --color-ink-2: #221c17;
-  --color-paper: #f3ecdf;
-  --color-paper-2: #e6dccb;
-  --color-rekt: #d63a28;
-  --color-gold: #e2b043;
+  --color-ink: #120810;
+  --color-ink-2: #2a1422;
+  --color-paper: #fff6df;
+  --color-paper-2: #ffe38a;
+  --color-rekt: #ff2d6a;
+  --color-gold: #e6ff4d;
   --font-display: "Archivo Black", Impact, sans-serif;
   --font-body: "Literata", Georgia, serif;
-  --radius-card: 1.15rem;
+  --radius-card: 1.35rem;
 }
 
 @layer base {
@@ -20,7 +20,10 @@
 
   body {
     margin: 0;
-    background: var(--color-ink);
+    background:
+      radial-gradient(circle at 8% -8%, rgb(255 45 106 / 0.35), transparent 42%),
+      radial-gradient(circle at 100% 0%, rgb(230 255 77 / 0.22), transparent 36%),
+      var(--color-ink);
     color: var(--color-paper);
     font-family: var(--font-body);
   }
@@ -44,11 +47,35 @@
     background-image: radial-gradient(var(--color-paper-2) 0.7px, transparent 0.7px);
     background-size: 8px 8px;
     color: var(--color-ink);
-    box-shadow: 6px 6px 0 0 var(--color-rekt);
+    box-shadow: 10px 10px 0 0 var(--color-rekt);
   }
 
   .stamp-card.is-main {
-    box-shadow: 8px 8px 0 0 var(--color-gold);
+    box-shadow: 12px 12px 0 0 var(--color-gold);
+  }
+
+  .tilt-tag {
+    transform: rotate(-7deg);
+  }
+
+  .sticker-grid > :nth-child(4n + 1) {
+    transform: rotate(-0.5deg);
+  }
+
+  .sticker-grid > :nth-child(4n + 2) {
+    transform: rotate(0.45deg);
+  }
+
+  .sticker-grid > :nth-child(4n + 3) {
+    transform: rotate(0.35deg);
+  }
+
+  .sticker-grid > :nth-child(4n) {
+    transform: rotate(-0.4deg);
+  }
+
+  .sticker-grid > :hover {
+    transform: rotate(0deg);
   }
 
   .mono {

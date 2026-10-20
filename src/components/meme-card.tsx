@@ -13,6 +13,7 @@ import {
   Music,
   Package,
   PartyPopper,
+  Radio,
   Rocket,
   Shield,
   Smartphone,
@@ -42,6 +43,7 @@ const ICONS: Record<string, LucideIcon> = {
   rock: Dumbbell,
   oprah: Sparkles,
   ronaldo: Trophy,
+  now: Radio,
 };
 
 const MONO: Record<string, string> = {
@@ -65,12 +67,14 @@ function stampDate(iso: string) {
 export function MemeCard({
   meme,
   featured = false,
+  compact = false,
   mine,
   pending = false,
   onReact,
 }: {
   meme: Meme;
   featured?: boolean;
+  compact?: boolean;
   mine: Kind | null;
   pending?: boolean;
   onReact?: (kind: Kind) => void;
@@ -78,6 +82,47 @@ export function MemeCard({
   const champ = champBy(meme.champSlug);
   const Icon = ICONS[meme.champSlug] ?? Flame;
   const interactive = Boolean(onReact);
+  const gif = meme.gifUrl || CARD_MEMES[meme.champSlug]?.src || "";
+  const gifAlt = meme.gifUrl ? `${meme.lineA}. ${meme.lineB}` : CARD_MEMES[meme.champSlug]?.alt || "Meme";
+  const badge = featured ? "Main" : meme.format === "score" ? "Score" : meme.format === "quote" ? "Quote" : "Poster";
+
+  if (compact) {
+    return (
+      <article className={featured ? "stamp-card is-main min-w-0 rounded-card p-3 sm:p-4" : "stamp-card min-w-0 rounded-card p-3 sm:p-4"}>
+        <div className="relative">
+          <HandmadeGif url={gif} alt={gifAlt} className="mt-0 aspect-[4/5] max-h-none min-h-64 object-cover sm:min-h-[28rem]" />
+          <p className="tilt-tag absolute top-3 left-3 border-2 border-ink bg-gold px-3 py-1.5 font-display text-sm leading-none tracking-wide text-ink uppercase sm:text-base">
+            {champ?.short ?? meme.champSlug}
+          </p>
+          <p className="absolute top-3 right-3 border-2 border-ink bg-rekt px-3 py-1.5 font-display text-xs leading-none tracking-widest text-paper uppercase sm:text-sm">
+            {badge}
+          </p>
+        </div>
+        <div className="px-2 py-4 text-center sm:py-5">
+          {meme.format === "impact" ? (
+            <>
+              <p className="font-display text-2xl leading-none tracking-tight uppercase sm:text-4xl">{meme.lineA}</p>
+              <p className="mt-2 font-display text-2xl leading-none tracking-tight text-rekt uppercase sm:text-4xl">{meme.lineB}</p>
+            </>
+          ) : (
+            <p className="font-body text-xl leading-snug text-pretty italic sm:text-3xl">{meme.lineA}</p>
+          )}
+        </div>
+        <footer className="space-y-3 border-t-2 border-ink/15 pt-3">
+          <p className="truncate text-sm text-ink/60 sm:text-base">
+            {meme.aliasA} {meme.aliasB}
+          </p>
+          {interactive ? (
+            <div className="grid grid-cols-3 gap-2">
+              <ReactButton label="Rekt" count={meme.rekt} pressed={mine === "rekt"} disabled={pending} huge onClick={() => onReact?.("rekt")} icon={Flame} />
+              <ReactButton label="Defend" count={meme.defend} pressed={mine === "defend"} disabled={pending} huge onClick={() => onReact?.("defend")} icon={Shield} />
+              <ReactButton label="Crown" count={meme.crown} pressed={mine === "crown"} disabled={pending} huge onClick={() => onReact?.("crown")} icon={Crown} />
+            </div>
+          ) : null}
+        </footer>
+      </article>
+    );
+  }
 
   return (
     <article className={featured ? "stamp-card is-main rounded-card p-4 sm:p-5" : "stamp-card rounded-card p-4 sm:p-5"}>
@@ -89,12 +134,12 @@ export function MemeCard({
           <p className="font-display text-lg leading-none tracking-wide uppercase">{champ?.name ?? meme.champSlug}</p>
           <p className="mt-1 text-sm text-ink/70">{champ?.role}</p>
         </div>
-        <p className="font-display text-xs tracking-widest text-rekt uppercase">
-          {featured ? "Main event" : meme.format === "score" ? "Score" : meme.format === "quote" ? "Quote" : "Poster"}
+        <p className="tilt-tag border-2 border-ink bg-rekt px-2 py-1 font-display text-[10px] tracking-widest text-paper uppercase">
+          {badge}
         </p>
       </header>
 
-      <div className="px-1 py-6 text-center">
+      <div className="px-1 py-5 text-center">
         {meme.format === "impact" ? (
           <>
             <p className="font-display text-3xl leading-none tracking-tight text-balance uppercase sm:text-4xl">
@@ -113,7 +158,7 @@ export function MemeCard({
             <p className="mt-3 font-body text-2xl leading-snug text-pretty sm:text-3xl">{meme.lineA}</p>
           </>
         )}
-        <HandmadeGif url={meme.gifUrl || CARD_MEMES[meme.champSlug]?.src || ""} alt={meme.gifUrl ? "Handmade GIF" : CARD_MEMES[meme.champSlug]?.alt || "Meme"} />
+        <HandmadeGif url={gif} alt={gifAlt} className="max-h-72" />
       </div>
 
       <footer className="space-y-3 border-t-2 border-ink/15 pt-3">
@@ -124,30 +169,9 @@ export function MemeCard({
         </p>
         {interactive ? (
           <div className="flex flex-wrap gap-2">
-            <ReactButton
-              label="Rekt"
-              count={meme.rekt}
-              pressed={mine === "rekt"}
-              disabled={pending}
-              onClick={() => onReact?.("rekt")}
-              icon={Flame}
-            />
-            <ReactButton
-              label="Defend"
-              count={meme.defend}
-              pressed={mine === "defend"}
-              disabled={pending}
-              onClick={() => onReact?.("defend")}
-              icon={Shield}
-            />
-            <ReactButton
-              label="Crown"
-              count={meme.crown}
-              pressed={mine === "crown"}
-              disabled={pending}
-              onClick={() => onReact?.("crown")}
-              icon={Crown}
-            />
+            <ReactButton label="Rekt" count={meme.rekt} pressed={mine === "rekt"} disabled={pending} onClick={() => onReact?.("rekt")} icon={Flame} />
+            <ReactButton label="Defend" count={meme.defend} pressed={mine === "defend"} disabled={pending} onClick={() => onReact?.("defend")} icon={Shield} />
+            <ReactButton label="Crown" count={meme.crown} pressed={mine === "crown"} disabled={pending} onClick={() => onReact?.("crown")} icon={Crown} />
           </div>
         ) : (
           <p className="font-display text-xs tracking-widest uppercase">Preview</p>
@@ -157,7 +181,7 @@ export function MemeCard({
   );
 }
 
-function HandmadeGif({ url, alt }: { url: string; alt: string }) {
+function HandmadeGif({ url, alt, className = "" }: { url: string; alt: string; className?: string }) {
   const [hidden, setHidden] = useState(false);
   if (!url || hidden) return null;
   return (
@@ -167,7 +191,7 @@ function HandmadeGif({ url, alt }: { url: string; alt: string }) {
       loading="lazy"
       decoding="async"
       onError={() => setHidden(true)}
-      className="mx-auto mt-5 max-h-64 w-full border-2 border-ink object-contain"
+      className={`mx-auto mt-5 w-full border-2 border-ink object-contain ${className}`}
     />
   );
 }
@@ -177,6 +201,8 @@ function ReactButton({
   count,
   pressed,
   disabled,
+  compact = false,
+  huge = false,
   onClick,
   icon: Icon,
 }: {
@@ -184,6 +210,8 @@ function ReactButton({
   count: number;
   pressed: boolean;
   disabled: boolean;
+  compact?: boolean;
+  huge?: boolean;
   onClick: () => void;
   icon: LucideIcon;
 }) {
@@ -198,13 +226,14 @@ function ReactButton({
   return (
     <button
       type="button"
+      aria-label={`${label} ${count}`}
       aria-pressed={pressed}
       disabled={disabled}
       onClick={onClick}
-      className={`inline-flex h-11 items-center gap-1.5 rounded-full border-2 px-3 text-sm font-semibold disabled:opacity-50 ${tone}`}
+      className={`inline-flex items-center justify-center gap-1 rounded-full border-2 font-semibold disabled:opacity-50 ${huge ? "h-12 px-2 text-sm sm:h-14 sm:text-base" : compact ? "h-9 px-1 text-xs" : "h-11 px-3 text-sm"} ${tone}`}
     >
-      <Icon className="size-4" aria-hidden />
-      <span>{label}</span>
+      <Icon className="size-4 shrink-0" aria-hidden />
+      <span className={compact && !huge ? "sr-only" : ""}>{label}</span>
       <span className="tabular-nums">{count}</span>
     </button>
   );

@@ -154,7 +154,7 @@ function ComposerForm({
             Stamp a roast
           </Dialog.Title>
           <Dialog.Description className="mt-2 max-w-sm text-sm text-paper/70">
-            House lines only. Optional handmade GIF. Public names, comedy-club rules.
+            House lines only. The meme can come with. Keep it a joke, not a felony.
           </Dialog.Description>
         </div>
         <Dialog.Close className="inline-flex size-11 items-center justify-center rounded-full border-2 border-paper/40 text-paper" aria-label="Close">

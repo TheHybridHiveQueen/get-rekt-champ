@@ -1,8 +1,9 @@
 /* TEAM */
 Idea: TheHybridHiveQueen
 Credit: Idea by the Brain of TheHybridHiveQueen
-Site: https://github.com/TheHybridHiveQueen
+Site: https://thehybridhivequeen.com
 Contact: https://github.com/TheHybridHiveQueen/get-rekt-champ
+GitHub: https://github.com/TheHybridHiveQueen
 
 /* SITE */
 Name: Get Rekt Champ

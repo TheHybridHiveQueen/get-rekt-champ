@@ -1,8 +1,12 @@
 # Get Rekt Champ
 
-A T-rated parody pit. Pick a public name, spin a line from the house book, and stamp it on the shared wall. Every card already shows a human-made meme of that name. Hang your own GIF on top if you made one.
+A T-rated parody pit. Pick a public name, spin a line from the house book, and stamp it on the shared wall. The wall also carries a pack of 2020s memes, not reruns from the 90s.
 
 **Idea by the Brain of TheHybridHiveQueen.**
+
+- Site: https://thehybridhivequeen.com
+- GitHub: https://github.com/TheHybridHiveQueen/get-rekt-champ
+- Contributors, house scan, and hash manifest: `/contributors`
 
 This is a community gag. Big public names only, played for laughs. Not a comment section, not a pile-on, not a place for private people.
 

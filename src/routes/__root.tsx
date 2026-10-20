@@ -3,7 +3,7 @@ import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import appCss from "../styles.css?url";
 
-import { IDEA_CREDIT, SEARCH_DESCRIPTION } from "@/lib/credit";
+import { GITHUB_URL, IDEA_CREDIT, REPO_URL, SEARCH_DESCRIPTION, SITE_URL } from "@/lib/credit";
 
 const APP_NAME = "Get Rekt Champ";
 
@@ -20,7 +20,8 @@ const jsonLd = {
   author: {
     "@type": "Person",
     name: "TheHybridHiveQueen",
-    url: "https://github.com/TheHybridHiveQueen",
+    url: SITE_URL,
+    sameAs: [GITHUB_URL, REPO_URL, SITE_URL],
   },
   creator: {
     "@type": "Person",
@@ -50,7 +51,9 @@ export const Route = createRootRoute({
       { name: "robots", content: "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" },
       { name: "googlebot", content: "index, follow, max-image-preview:large, max-snippet:-1" },
       { name: "rating", content: "general" },
-      { name: "theme-color", content: "#14110e" },
+      { name: "theme-color", content: "#120810" },
+      { name: "apple-mobile-web-app-title", content: APP_NAME },
+      { name: "mobile-web-app-capable", content: "yes" },
     ],
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
@@ -63,7 +66,7 @@ export const Route = createRootRoute({
         href: "https://fonts.googleapis.com/css2?family=Archivo+Black&family=Literata:ital,opsz,wght@0,7..72,500;0,7..72,700;1,7..72,500&display=swap",
       },
       { rel: "stylesheet", href: appCss },
-      { rel: "manifest", href: "/__grok/manifest.webmanifest" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "apple-touch-icon", href: "/__grok/icon-180.png" },
     ],
     scripts: [

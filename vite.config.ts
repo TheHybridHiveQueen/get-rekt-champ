@@ -10,6 +10,8 @@ import { nitro } from "nitro/vite";
 import { grokPwaPlugin } from "./scripts/grok-pwa-plugin.mjs";
 // @ts-expect-error JS plugin alongside the TS vite config
 import { appEnvPlugin } from "./scripts/app-env-plugin.mjs";
+// @ts-expect-error JS module alongside the TS vite config
+import { applyNodeSecurityHeaders } from "./scripts/security-headers.mjs";
 import { isMigrationFile } from "./scripts/migration-plan.mjs";
 
 /** The files `src/lib/db.ts` globs — same directory, same non-recursive scope. */
@@ -19,6 +21,18 @@ function hasGlobbedMigrations(root: string): boolean {
   } catch {
     return false;
   }
+}
+
+function securityHeadersPlugin(): Plugin {
+  return {
+    name: "app-builder:security-headers",
+    configureServer(server) {
+      server.middlewares.use((_req, res, next) => {
+        applyNodeSecurityHeaders(res, true);
+        next();
+      });
+    },
+  };
 }
 
 /**
@@ -159,6 +173,7 @@ export default defineConfig(({ command, isPreview }) => ({
   resolve: { tsconfigPaths: true },
   plugins: [
     pgliteBootstrapPlugin(),
+    securityHeadersPlugin(),
     // Before tanstackStart so /auth/popup never falls through to the SPA.
     authPopupPlugin(),
     // Dev-only /__app-env, read by scripts/check-auth-invariant.mjs.

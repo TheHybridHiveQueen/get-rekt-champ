@@ -3,10 +3,9 @@ import { getRouteApi } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 import { Plus, Ticket } from "lucide-react";
 import { Composer } from "@/components/composer";
-import { HouseReel } from "@/components/house-reel";
 import { MemeCard } from "@/components/meme-card";
 import { SiteFooter } from "@/components/site-footer";
-import { IDEA_CREDIT } from "@/lib/credit";
+import { IDEA_CREDIT, REPO_URL, SITE_URL } from "@/lib/credit";
 import { loadNoise, playPit, setNoise } from "@/lib/pit-sound";
 import {
   CHAMPS,
@@ -47,6 +46,8 @@ export function Board() {
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [noise, setNoiseOn] = useState(true);
+  const [view, setView] = useState<"stack" | "grid">("grid");
+  const [shown, setShown] = useState(8);
 
   useEffect(() => {
     let booth = localStorage.getItem(TOKEN_KEY);
@@ -56,6 +57,8 @@ export function Board() {
     }
     setToken(booth);
     setNoiseOn(loadNoise());
+    const saved = localStorage.getItem("grc-view");
+    if (saved === "grid" || saved === "stack") setView(saved);
     let cancel = false;
     myVotes({ data: booth })
       .then((rows) => {
@@ -67,6 +70,10 @@ export function Board() {
       cancel = true;
     };
   }, []);
+
+  useEffect(() => {
+    setShown(8);
+  }, [lane, champ, sort]);
 
   const visibleChamps = CHAMPS.filter((item) => lane === "all" || item.lane === lane);
 
@@ -87,6 +94,9 @@ export function Board() {
     if (sort === "hot") return [...rows].sort((a, b) => heat(b) - heat(a));
     return [...rows].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
   }, [pool, featured, sort]);
+
+  const wall = useMemo(() => (featured ? [featured, ...rest] : []), [featured, rest]);
+  const visibleWall = wall.slice(0, shown);
 
   const standings = useMemo(() => {
     return [...tallies].sort((a, b) => b.rekt - a.rekt).slice(0, 5);
@@ -134,7 +144,7 @@ export function Board() {
         );
       });
       setComposerOpen(false);
-      setNote("Stamped. The pit can see it.");
+      setNote("Stamped. The group chat is unwell.");
       playPit("stamp");
     } catch (err) {
       setError(messageOf(err));
@@ -150,7 +160,7 @@ export function Board() {
           <div>
             <p className="font-display flex items-center gap-2 text-xs tracking-widest text-gold uppercase">
               <Ticket className="size-4" aria-hidden />
-              Parody pit
+              Public names. Bad timing.
             </p>
             <h1 className="mt-2 font-display text-5xl leading-none tracking-tight sm:text-6xl">
               GET REKT
@@ -158,27 +168,36 @@ export function Board() {
             </h1>
           </div>
           <p className="max-w-sm text-sm leading-relaxed text-paper/75 sm:text-right">
-            T-rated satire of public names. House lines, handmade GIFs, and a wall that keeps the stamp. {IDEA_CREDIT}.
+            Big public names, small dignity, T-rated. Spin a house line. The meme is already losing. {IDEA_CREDIT}.
           </p>
         </div>
-        <nav aria-label="Site" className="mx-auto flex max-w-6xl gap-4 px-4 pb-4 text-sm">
-          <Link to="/press" className="text-paper underline decoration-rekt underline-offset-4">
-            Press release
-          </Link>
-          <Link to="/roadmap" className="text-paper underline decoration-rekt underline-offset-4">
-            Roadmap
-          </Link>
-          <a
-            href="https://github.com/TheHybridHiveQueen/get-rekt-champ"
-            className="text-paper underline decoration-rekt underline-offset-4"
-          >
-            Public source
-          </a>
-        </nav>
+          <nav aria-label="Site" className="mx-auto flex max-w-6xl flex-wrap gap-2 px-4 pb-4 text-sm">
+            <Link to="/press" className="inline-flex h-11 items-center rounded-full border-2 border-paper/30 px-4 font-semibold">
+              Press
+            </Link>
+            <Link to="/roadmap" className="inline-flex h-11 items-center rounded-full border-2 border-paper/30 px-4 font-semibold">
+              Roadmap
+            </Link>
+            <Link to="/contributors" className="inline-flex h-11 items-center rounded-full border-2 border-paper/30 px-4 font-semibold">
+              Contributors
+            </Link>
+            <a href={SITE_URL} className="inline-flex h-11 items-center rounded-full bg-gold px-4 font-semibold text-ink">
+              Website
+            </a>
+            <a href={REPO_URL} className="inline-flex h-11 items-center rounded-full bg-paper px-4 font-semibold text-ink">
+              GitHub
+            </a>
+          </nav>
       </header>
 
-      <div className="mx-auto grid max-w-6xl gap-6 px-4 py-5 lg:grid-cols-[15rem_minmax(0,1fr)_15rem]">
-        <aside className="hidden lg:block">
+      <div
+        className={
+          view === "grid"
+            ? "mx-auto max-w-[96rem] px-3 py-4 sm:px-4"
+            : "mx-auto grid max-w-6xl gap-6 px-4 py-5 lg:grid-cols-[15rem_minmax(0,1fr)_15rem]"
+        }
+      >
+        <aside className={view === "grid" ? "hidden" : "hidden lg:block"}>
           <p className="font-display text-xs tracking-widest text-paper/60 uppercase">The roster</p>
           <ul className="mt-3 space-y-1">
             {CHAMPS.map((item) => {
@@ -207,7 +226,7 @@ export function Board() {
         </aside>
 
         <main className="min-w-0">
-          <div className="flex gap-2 overflow-x-auto pb-3 lg:hidden">
+          <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
             {LANES.map((item) => (
               <FilterChip
                 key={item.id}
@@ -220,7 +239,7 @@ export function Board() {
               />
             ))}
           </div>
-          <div className="mb-4 flex gap-2 overflow-x-auto pb-1 lg:hidden">
+          <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
             {visibleChamps.map((item) => (
               <FilterChip
                 key={item.slug}
@@ -231,35 +250,40 @@ export function Board() {
             ))}
           </div>
 
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div className="hidden gap-2 lg:flex">
-              {LANES.map((item) => (
-                <FilterChip
-                  key={item.id}
-                  on={lane === item.id && (item.id === "all" ? champ === null : champ === null || champBy(champ)?.lane === item.id)}
-                  label={item.label}
-                  onClick={() => {
-                    setLane(item.id);
-                    if (item.id === "all" || (champ && champBy(champ)?.lane !== item.id)) setChamp(null);
-                  }}
-                />
-              ))}
+          <div className="mb-4 flex flex-wrap items-end gap-3">
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Sort">
+              <FilterChip on={sort === "fresh"} label="New" onClick={() => setSort("fresh")} />
+              <FilterChip on={sort === "hot"} label="Hot" onClick={() => setSort("hot")} />
             </div>
-            <div className="flex gap-2">
-              <FilterChip on={sort === "fresh"} label="Fresh" onClick={() => setSort("fresh")} />
-              <FilterChip on={sort === "hot"} label="Hottest" onClick={() => setSort("hot")} />
+            <div className="flex flex-wrap gap-2" role="group" aria-label="View">
               <FilterChip
-                on={noise}
-                label={noise ? "Noise on" : "Noise off"}
+                on={view === "stack"}
+                label="List"
                 onClick={() => {
-                  const next = !noise;
-                  setNoise(next);
-                  setNoiseOn(next);
-                  if (next) playPit("loop");
+                  setView("stack");
+                  localStorage.setItem("grc-view", "stack");
+                }}
+              />
+              <FilterChip
+                on={view === "grid"}
+                label="2×2"
+                onClick={() => {
+                  setView("grid");
+                  localStorage.setItem("grc-view", "grid");
                 }}
               />
             </div>
-            <p className="text-sm text-paper/60 tabular-nums">{total} stamps on the wall</p>
+            <FilterChip
+              on={noise}
+              label={noise ? "Sound on" : "Sound off"}
+              onClick={() => {
+                const next = !noise;
+                setNoise(next);
+                setNoiseOn(next);
+                if (next) playPit("loop");
+              }}
+            />
+            <p className="text-sm text-paper/60 tabular-nums">{total} on the wall</p>
           </div>
 
           {note ? (
@@ -268,47 +292,72 @@ export function Board() {
             </p>
           ) : null}
 
-          <HouseReel
-            lane={lane}
-            champ={champ}
-            onPick={(loop) => {
-              playPit("loop");
-              setChamp(loop.champ);
-              setLane(loop.lane);
-            }}
-          />
-
-          {featured ? (
-            <MemeCard
-              meme={featured}
-              featured
-              mine={mine.get(featured.id) ?? null}
-              pending={pendingId === featured.id}
-              onReact={(kind) => onReact(featured, kind)}
-            />
+          {view === "grid" && visibleWall.length > 0 ? (
+            <div className="pb-32">
+              <div className="sticker-grid grid grid-cols-2 gap-3 sm:gap-4">
+                {visibleWall.map((meme) => (
+                  <MemeCard
+                    key={meme.id}
+                    meme={meme}
+                    compact
+                    featured={meme.id === featured?.id}
+                    mine={mine.get(meme.id) ?? null}
+                    pending={pendingId === meme.id}
+                    onReact={(kind) => onReact(meme, kind)}
+                  />
+                ))}
+              </div>
+              {visibleWall.length < wall.length ? (
+                <button
+                  type="button"
+                  onClick={() => setShown((count) => count + 8)}
+                  className="mx-auto mt-5 flex h-12 items-center rounded-full bg-paper px-5 font-display tracking-wide text-ink uppercase"
+                >
+                  More memes ({wall.length - visibleWall.length} left)
+                </button>
+              ) : null}
+            </div>
+          ) : view === "stack" && featured ? (
+            <>
+              <MemeCard
+                meme={featured}
+                featured
+                mine={mine.get(featured.id) ?? null}
+                pending={pendingId === featured.id}
+                onReact={(kind) => onReact(featured, kind)}
+              />
+              <div className="mt-5 space-y-5 pb-32">
+                {rest.slice(0, Math.max(0, shown - 1)).map((meme) => (
+                  <MemeCard
+                    key={meme.id}
+                    meme={meme}
+                    mine={mine.get(meme.id) ?? null}
+                    pending={pendingId === meme.id}
+                    onReact={(kind) => onReact(meme, kind)}
+                  />
+                ))}
+                {shown < wall.length ? (
+                  <button
+                    type="button"
+                    onClick={() => setShown((count) => count + 8)}
+                    className="flex h-12 items-center rounded-full bg-paper px-5 font-display tracking-wide text-ink uppercase"
+                  >
+                    More memes ({wall.length - shown} left)
+                  </button>
+                ) : null}
+              </div>
+            </>
           ) : (
             <div className="stamp-card rounded-card p-8 text-center">
-              <p className="font-display text-2xl uppercase">Nobody stamped this lane yet.</p>
-              <p className="mt-2 text-ink/70">Be the first. House lines, your combo.</p>
+              <p className="font-display text-2xl uppercase">This lane is suspiciously quiet.</p>
+              <p className="mt-2 text-ink/70">Be the first stamp. The meme will not defend itself.</p>
             </div>
           )}
-
-          <div className="mt-5 space-y-5 pb-32">
-            {rest.map((meme) => (
-              <MemeCard
-                key={meme.id}
-                meme={meme}
-                mine={mine.get(meme.id) ?? null}
-                pending={pendingId === meme.id}
-                onReact={(kind) => onReact(meme, kind)}
-              />
-            ))}
-          </div>
         </main>
 
-        <aside className="hidden lg:block">
+        <aside className={view === "grid" ? "hidden" : "hidden lg:block"}>
           <div className="rounded-card border-2 border-paper/20 bg-ink-2 p-4">
-            <p className="font-display text-xs tracking-widest text-gold uppercase">Catching it</p>
+            <p className="font-display text-xs tracking-widest text-gold uppercase">Most rekt</p>
             <ol className="mt-3 space-y-2">
               {standings.map((row, index) => {
                 const person = champBy(row.slug);
@@ -334,8 +383,8 @@ export function Board() {
           <div className="mt-4 rounded-card border-2 border-paper/20 p-4 text-sm leading-relaxed text-paper/75">
             <p className="font-display text-xs tracking-widest text-paper uppercase">House rules</p>
             <p className="mt-2">
-              Big public names only, played for laughs. Remix the house book. Hang a handmade GIF if you made one.
-              Tap a reaction once. Tap it again to take it back.
+              Big names only, played for laughs. Remix the house book. The meme is already on the card.
+              Tap a reaction. Tap it again if you got brave.
             </p>
           </div>
         </aside>

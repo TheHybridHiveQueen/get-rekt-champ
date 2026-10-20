@@ -12,6 +12,7 @@ import {
   type Meme,
   type Tally,
 } from "@/lib/catalog";
+import { NOW_PACK } from "@/lib/now-pack";
 
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -63,7 +64,7 @@ function isUnique(err: unknown): boolean {
 
 async function ensureSeed(sql: Awaited<ReturnType<typeof import("@/lib/db").getSql>>) {
   const existing = await sql<{ n: number }>`select count(*)::int as n from memes`;
-  if ((existing[0]?.n ?? 0) > 0) return;
+  if ((existing[0]?.n ?? 0) === 0) {
   for (const seed of SEEDS) {
     const top = BEATS.find((b) => b.id === seed.a);
     const bottom = seed.b ? BEATS.find((b) => b.id === seed.b) : undefined;
@@ -89,6 +90,70 @@ async function ensureSeed(sql: Awaited<ReturnType<typeof import("@/lib/db").getS
       on conflict (seed_key) do nothing
     `;
   }
+  }
+  await syncSeedLines(sql);
+  await insertNowPack(sql);
+}
+
+async function insertNowPack(sql: Awaited<ReturnType<typeof import("@/lib/db").getSql>>) {
+  const existing = await sql<{ n: number }>`select count(*)::int as n from memes where seed_key like 'now-%'`;
+  if ((existing[0]?.n ?? 0) >= NOW_PACK.length) return;
+  const have = await sql<{ seed_key: string }>`select seed_key from memes where seed_key like 'now-%'`;
+  const got = new Set(have.map((row) => row.seed_key));
+  const missing = NOW_PACK.filter((card) => !got.has(card.key));
+  for (let offset = 0; offset < missing.length; offset += 40) {
+    const chunk = missing.slice(offset, offset + 40);
+    const params: Array<string | number> = [];
+    const values: string[] = [];
+    chunk.forEach((card, index) => {
+      const base = index * 11;
+      const n = Math.max(0, NOW_PACK.findIndex((item) => item.key === card.key));
+      values.push(
+        `($${base + 1}, $${base + 2}, 'impact', $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7}, $${base + 8}, $${base + 9}, $${base + 10}, now() - make_interval(mins => $${base + 11}::int))`,
+      );
+      params.push(
+        card.key,
+        card.champ,
+        card.lineA,
+        card.lineB,
+        ALIAS_A[n % ALIAS_A.length] ?? "Velvet",
+        ALIAS_B[n % ALIAS_B.length] ?? "Stamp",
+        card.gif,
+        (n * 3) % 17,
+        (n * 5) % 9,
+        n % 4,
+        20 + (n % 5000),
+      );
+    });
+    await sql.query(
+      `insert into memes (seed_key, champ_slug, format, line_a, line_b, alias_a, alias_b, gif_url, rekt, defend, crown, created_at)
+       values ${values.join(", ")}
+       on conflict (seed_key) do nothing`,
+      params,
+    );
+  }
+}
+
+async function syncSeedLines(sql: Awaited<ReturnType<typeof import("@/lib/db").getSql>>) {
+  const params: string[] = [];
+  const values: string[] = [];
+  SEEDS.forEach((seed, index) => {
+    const top = BEATS.find((b) => b.id === seed.a);
+    const bottom = seed.b ? BEATS.find((b) => b.id === seed.b) : undefined;
+    if (!top) return;
+    const base = index * 3;
+    values.push(`($${base + 1}, $${base + 2}, $${base + 3})`);
+    params.push(seed.key, top.text, bottom?.text ?? "");
+  });
+  if (values.length === 0) return;
+  await sql.query(
+    `update memes as m
+     set line_a = v.line_a, line_b = v.line_b
+     from (values ${values.join(", ")}) as v(seed_key, line_a, line_b)
+     where m.seed_key = v.seed_key
+       and (m.line_a is distinct from v.line_a or m.line_b is distinct from v.line_b)`,
+    params,
+  );
 }
 
 function assertDraft(data: unknown): Draft {
@@ -175,7 +240,7 @@ export const listMemes = createServerFn({ method: "GET" }).handler(async () => {
       to_char(created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at
     from memes
     order by created_at desc
-    limit 120
+    limit 420
   `;
   const tallies = await sql<Tally>`
     select champ_slug as slug, count(*)::int as posts, coalesce(sum(rekt), 0)::int as rekt

@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ContributorsRouteImport } from './routes/contributors'
 import { Route as PressRouteImport } from './routes/press'
 import { Route as RoadmapRouteImport } from './routes/roadmap'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
@@ -18,6 +19,11 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContributorsRoute = ContributorsRouteImport.update({
+  id: '/contributors',
+  path: '/contributors',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PressRoute = PressRouteImport.update({
@@ -43,6 +49,7 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/contributors': typeof ContributorsRoute
   '/press': typeof PressRoute
   '/roadmap': typeof RoadmapRoute
   '/robots.txt': typeof RobotsDottxtRoute
@@ -50,6 +57,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/contributors': typeof ContributorsRoute
   '/press': typeof PressRoute
   '/roadmap': typeof RoadmapRoute
   '/robots.txt': typeof RobotsDottxtRoute
@@ -58,6 +66,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/contributors': typeof ContributorsRoute
   '/press': typeof PressRoute
   '/roadmap': typeof RoadmapRoute
   '/robots.txt': typeof RobotsDottxtRoute
@@ -65,14 +74,34 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/press' | '/roadmap' | '/robots.txt' | '/sitemap.xml'
+  fullPaths:
+    | '/'
+    | '/contributors'
+    | '/press'
+    | '/roadmap'
+    | '/robots.txt'
+    | '/sitemap.xml'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/press' | '/roadmap' | '/robots.txt' | '/sitemap.xml'
-  id: '__root__' | '/' | '/press' | '/roadmap' | '/robots.txt' | '/sitemap.xml'
+  to:
+    | '/'
+    | '/contributors'
+    | '/press'
+    | '/roadmap'
+    | '/robots.txt'
+    | '/sitemap.xml'
+  id:
+    | '__root__'
+    | '/'
+    | '/contributors'
+    | '/press'
+    | '/roadmap'
+    | '/robots.txt'
+    | '/sitemap.xml'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ContributorsRoute: typeof ContributorsRoute
   PressRoute: typeof PressRoute
   RoadmapRoute: typeof RoadmapRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
@@ -86,6 +115,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contributors': {
+      id: '/contributors'
+      path: '/contributors'
+      fullPath: '/contributors'
+      preLoaderRoute: typeof ContributorsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/press': {
@@ -121,6 +157,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ContributorsRoute: ContributorsRoute,
   PressRoute: PressRoute,
   RoadmapRoute: RoadmapRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
