@@ -2,10 +2,14 @@ import { useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Shuffle, X } from "lucide-react";
 import { MemeCard } from "@/components/meme-card";
+import { Link } from "@tanstack/react-router";
+import type { StampChecks } from "@/lib/agreements";
+import { gifProblem } from "@/lib/gif-check";
 import {
   ALIAS_A,
   ALIAS_B,
   CHAMPS,
+  LANES,
   champBy,
   linesFor,
   type Draft,
@@ -77,7 +81,7 @@ export function Composer({
   busy: boolean;
   error: string | null;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (draft: Draft) => void;
+  onSubmit: (draft: Draft & StampChecks) => void;
 }) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -106,9 +110,10 @@ function ComposerForm({
   initialSlug: string | null;
   busy: boolean;
   error: string | null;
-  onSubmit: (draft: Draft) => void;
+  onSubmit: (draft: Draft & StampChecks) => void;
 }) {
   const starter = initialSlug && champBy(initialSlug) ? initialSlug : "elon";
+  const [lane, setLane] = useState<(typeof LANES)[number]["id"]>(() => champBy(starter)?.lane ?? "nerds");
   const [draft, setDraft] = useState<Draft>(() => ({
     champSlug: starter,
     format: "impact",
@@ -140,12 +145,20 @@ function ComposerForm({
   const bottoms = linesFor(draft.champSlug, "bottom").map((b) => b.text);
   const quotes = linesFor(draft.champSlug, "quote").map((b) => b.text);
   const scores = linesFor(draft.champSlug, "score").map((b) => b.text);
+  const gifNote = gifProblem(draft.gifUrl);
+  const [age13, setAge13] = useState(false);
+  const [terms, setTerms] = useState(false);
+  const [ladder, setLadder] = useState(false);
+  const agreed = age13 && terms && ladder;
+  const names = CHAMPS.filter((champ) => lane === "all" || champ.lane === lane);
 
   return (
     <form
+      autoComplete="off"
       onSubmit={(event) => {
         event.preventDefault();
-        onSubmit(draft);
+        if (!agreed) return;
+        onSubmit({ ...draft, age13: true, terms: true, ladder: true });
       }}
     >
       <div className="mb-4 flex items-start justify-between gap-3">
@@ -154,7 +167,7 @@ function ComposerForm({
             Stamp a roast
           </Dialog.Title>
           <Dialog.Description className="mt-2 max-w-sm text-sm text-paper/70">
-            House lines only. The meme can come with. Keep it a joke, not a felony.
+            This does not go on the wall. The house has to approve it first. Nothing with a minor, a private person, or anything explicit is approved.
           </Dialog.Description>
         </div>
         <Dialog.Close className="inline-flex size-11 items-center justify-center rounded-full border-2 border-paper/40 text-paper" aria-label="Close">
@@ -162,8 +175,36 @@ function ComposerForm({
         </Dialog.Close>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-3">
-        {CHAMPS.map((champ) => {
+      <p className="font-display text-xs tracking-widest text-gold uppercase">1. Name</p>
+      <div className="mt-2 flex gap-2 overflow-x-auto pb-2" role="group" aria-label="Lane">
+        {LANES.map((item) => {
+          const on = lane === item.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => {
+                setLane(item.id);
+                setDraft((current) => {
+                  if (item.id === "all" || champBy(current.champSlug)?.lane === item.id) return current;
+                  const next = CHAMPS.find((champ) => champ.lane === item.id);
+                  if (!next) return current;
+                  return { ...current, champSlug: next.slug, ...draftFor(next.slug, current.format) };
+                });
+              }}
+              className={
+                on
+                  ? "h-11 shrink-0 rounded-full bg-gold px-3 font-semibold text-ink"
+                  : "h-11 shrink-0 rounded-full border-2 border-paper/30 px-3 font-semibold text-paper"
+              }
+            >
+              {item.label}
+            </button>
+          );
+        })}
+      </div>
+      <div className="mb-4 flex gap-2 overflow-x-auto pb-3" role="group" aria-label="Names">
+        {names.map((champ) => {
           const on = champ.slug === draft.champSlug;
           return (
             <button
@@ -188,6 +229,7 @@ function ComposerForm({
         })}
       </div>
 
+      <p className="mb-2 font-display text-xs tracking-widest text-gold uppercase">2. House line</p>
       <div className="mb-4 flex gap-2">
         {FORMATS.map((format) => {
           const on = draft.format === format.id;
@@ -277,32 +319,60 @@ function ComposerForm({
       </div>
 
       <label className="mt-4 block text-sm">
-        <span className="font-display tracking-widest uppercase">Handmade GIF</span>
+        <span className="font-display tracking-widest text-gold uppercase">3. GIF, optional</span>
         <input
           type="url"
           inputMode="url"
           name="gif"
           autoComplete="off"
           spellCheck={false}
-          placeholder="https://yoursite.com/hand-drawn.gif"
+          placeholder="https://media.giphy.com/media/example/giphy.gif"
           value={draft.gifUrl}
           onChange={(event) => setDraft((current) => ({ ...current, gifUrl: event.target.value }))}
+          aria-invalid={gifNote ? true : undefined}
           className="mt-2 h-11 w-full rounded-full border-2 border-paper/30 bg-ink px-4 text-paper"
         />
-        <span className="mt-2 block text-paper/70">
-          Optional. A direct .gif you drew, filmed, or cut by hand. Leave blank for type only.
+        <span className={`mt-2 block ${gifNote ? "text-gold" : "text-paper/70"}`}>
+          {gifNote ?? "Leave blank, or paste a direct Giphy link that ends in .gif. A rule break is a warning. A second one mutes uploads for 30 days. A third is a permanent ban."}
         </span>
       </label>
 
-      {error ? <p className="mt-3 text-sm text-paper">{error}</p> : null}
+      <fieldset className="mt-4 space-y-3 text-sm leading-snug">
+        <legend className="font-display text-xs tracking-widest text-gold uppercase">Click each box</legend>
+        <label className="flex items-start gap-3">
+          <input type="checkbox" name="age13" autoComplete="off" required checked={age13} onChange={(event) => setAge13(event.target.checked)} className="mt-1 size-4" />
+          <span>I agree that I am 13 or older.</span>
+        </label>
+        <label className="flex items-start gap-3">
+          <input type="checkbox" name="terms" autoComplete="off" required checked={terms} onChange={(event) => setTerms(event.target.checked)} className="mt-1 size-4" />
+          <span>
+            I agree to the <Link to="/rules" className="underline">rules and terms</Link>. I will not post a minor, anything explicit, a private person, or harassment.
+          </span>
+        </label>
+        <label className="flex items-start gap-3">
+          <input type="checkbox" name="ladder" autoComplete="off" required checked={ladder} onChange={(event) => setLadder(event.target.checked)} className="mt-1 size-4" />
+          <span>I agree that the first break is a warning, the second mutes uploads for 30 days, and the third is a permanent ban.</span>
+        </label>
+        <p className="text-paper/70">These boxes start empty. You have to click each one. The send button does not count until you do.</p>
+      </fieldset>
+
+      {error ? <p className="mt-3 text-sm text-gold">{error}</p> : null}
 
       <button
         type="submit"
-        disabled={busy}
+        disabled={busy || Boolean(gifNote) || !agreed}
         className="mt-4 h-12 w-full rounded-full bg-rekt font-display text-lg tracking-wide text-paper uppercase disabled:opacity-60"
       >
-        {busy ? "Stamping…" : "Stamp it"}
+        {busy ? "Sending…" : "I agree and send for review"}
       </button>
+      <p className="mt-3 text-sm text-paper/70">
+        <Link
+          to="/contributors"
+          className="inline-flex h-11 items-center rounded-full border-2 border-paper/30 px-4 font-semibold text-paper"
+        >
+          How to contribute
+        </Link>
+      </p>
     </form>
   );
 }

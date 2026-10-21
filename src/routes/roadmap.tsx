@@ -1,5 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { SiteFooter } from "@/components/site-footer";
+import { SiteNav } from "@/components/site-nav";
 import { IDEA_CREDIT, SEARCH_DESCRIPTION } from "@/lib/credit";
 
 export const Route = createFileRoute("/roadmap")({
@@ -44,13 +45,13 @@ function Roadmap() {
   return (
     <div className="min-h-dvh bg-ink text-paper">
       <header className="border-b-2 border-paper/15">
-        <div className="mx-auto flex max-w-3xl flex-wrap items-end justify-between gap-3 px-4 py-5">
+        <div className="mx-auto max-w-3xl px-4 py-5">
           <p className="font-display text-2xl leading-none">
             GET REKT <span className="text-rekt">CHAMP</span>
           </p>
-          <Link to="/" className="text-sm text-paper underline decoration-rekt underline-offset-4">
-            Back to the pit
-          </Link>
+          <div className="mt-4">
+            <SiteNav />
+          </div>
         </div>
       </header>
       <article className="mx-auto max-w-3xl px-4 py-8">

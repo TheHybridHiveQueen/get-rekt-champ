@@ -187,6 +187,11 @@ async function createSql(): Promise<Sql> {
  * both backends — define tables there, never inline in server functions.
  */
 export function getSql(): Promise<Sql> {
+  if (process.env.VERCEL && !databaseUrl) {
+    return Promise.reject(
+      new Error("The public wall has no durable database. Refusing to store anything until that is set."),
+    );
+  }
   sqlPromise ??= createSql().catch((err) => {
     sqlPromise = null; // don't memoize failures — let the next call retry
     throw err;

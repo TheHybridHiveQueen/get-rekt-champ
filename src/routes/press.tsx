@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { SiteFooter } from "@/components/site-footer";
+import { SiteNav } from "@/components/site-nav";
 import { IDEA_CREDIT, SEARCH_DESCRIPTION } from "@/lib/credit";
 
 export const Route = createFileRoute("/press")({
@@ -18,13 +19,13 @@ function Press() {
   return (
     <div className="min-h-dvh bg-ink text-paper">
       <header className="border-b-2 border-paper/15">
-        <div className="mx-auto flex max-w-3xl flex-wrap items-end justify-between gap-3 px-4 py-5">
+        <div className="mx-auto max-w-3xl px-4 py-5">
           <p className="font-display text-2xl leading-none">
             GET REKT <span className="text-rekt">CHAMP</span>
           </p>
-          <Link to="/" className="text-sm text-paper underline decoration-rekt underline-offset-4">
-            Back to the pit
-          </Link>
+          <div className="mt-4">
+            <SiteNav />
+          </div>
         </div>
       </header>
       <article className="mx-auto max-w-3xl px-4 py-8">
@@ -34,8 +35,7 @@ function Press() {
           Get Rekt Champ opens a handmade parody pit.
         </h1>
         <p className="mt-4 text-lg leading-relaxed text-paper/80">
-          A community gag board lets anyone stamp a T-rated roast of a public name, and hang a GIF they made by
-          hand.
+          A community gag board of T-rated roasts about public names. New stamps wait for the house to approve them. They do not go on the wall by themselves.
         </p>
 
         <div className="mt-8 space-y-4 text-base leading-relaxed text-pretty">
@@ -55,13 +55,18 @@ function Press() {
           <p>
             The source lives at{" "}
             <a
-              className="text-paper underline decoration-rekt underline-offset-4"
+              className="font-semibold text-paper underline decoration-rekt underline-offset-4"
               href="https://github.com/TheHybridHiveQueen/get-rekt-champ"
+              target="_blank"
+              rel="noopener noreferrer"
             >
               github.com/TheHybridHiveQueen/get-rekt-champ
             </a>
-            . A written roadmap is on the site. Search engines are invited to index the pit, this release, and that
-            roadmap.
+            . The{" "}
+            <Link to="/roadmap" className="font-semibold text-paper underline decoration-gold underline-offset-4">
+              roadmap
+            </Link>{" "}
+            is on the site.
           </p>
         </div>
 

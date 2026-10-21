@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { getRouteApi } from "@tanstack/react-router";
-import { Link } from "@tanstack/react-router";
 import { Plus, Ticket } from "lucide-react";
 import { Composer } from "@/components/composer";
 import { MemeCard } from "@/components/meme-card";
 import { SiteFooter } from "@/components/site-footer";
-import { IDEA_CREDIT, REPO_URL, SITE_URL } from "@/lib/credit";
+import { SiteNav } from "@/components/site-nav";
+import { IDEA_CREDIT } from "@/lib/credit";
 import { loadNoise, playPit, setNoise } from "@/lib/pit-sound";
 import {
   CHAMPS,
@@ -18,10 +18,52 @@ import {
   type Meme,
   type Tally,
 } from "@/lib/catalog";
-import { createMeme, myVotes, reactToMeme } from "@/lib/roasts";
+import { createMeme, myVotes, reactToMeme, reportMeme } from "@/lib/roasts";
+import type { StampChecks } from "@/lib/agreements";
+import type { ReportReason } from "@/lib/reports";
 
 const routeApi = getRouteApi("/");
 const TOKEN_KEY = "grc-booth";
+type WallView = "list" | "2" | "3" | "4";
+
+function mixKey(text: string, salt: number) {
+  let h = salt || 1;
+  for (let i = 0; i < text.length; i += 1) h = Math.imul(h ^ text.charCodeAt(i), 0x9e3779b1);
+  return h >>> 0;
+}
+
+function freshSalt() {
+  const buf = new Uint32Array(1);
+  crypto.getRandomValues(buf);
+  return buf[0] || 1;
+}
+
+/** One card per public name. Jumble picks which meme, never a second copy. */
+function dealSpread(rows: Meme[], salt: number) {
+  const buckets = new Map<string, Meme[]>();
+  for (const meme of rows) {
+    const name = meme.champSlug;
+    const list = buckets.get(name);
+    if (list) list.push(meme);
+    else buckets.set(name, [meme]);
+  }
+  const picked: Meme[] = [];
+  for (const [name, list] of buckets) {
+    const index = mixKey(name, salt) % list.length;
+    const card = list[index];
+    if (card) picked.push(card);
+  }
+  picked.sort((a, b) => mixKey(a.champSlug, salt) - mixKey(b.champSlug, salt));
+  return picked;
+}
+
+function readView(): WallView {
+  if (typeof localStorage === "undefined") return "2";
+  const saved = localStorage.getItem("grc-view");
+  if (saved === "list" || saved === "stack") return "list";
+  if (saved === "3" || saved === "4" || saved === "2") return saved;
+  return "2";
+}
 
 function messageOf(err: unknown) {
   if (err instanceof Error && err.message) return err.message;
@@ -33,10 +75,12 @@ function messageOf(err: unknown) {
 
 export function Board() {
   const loaded = routeApi.useLoaderData();
+  const search = routeApi.useSearch();
+  const navigate = routeApi.useNavigate();
   const [memes, setMemes] = useState<Meme[]>(loaded.memes);
   const [tallies, setTallies] = useState<Tally[]>(loaded.tallies);
-  const [lane, setLane] = useState<Lane | "all">("all");
-  const [champ, setChamp] = useState<string | null>(null);
+  const [lane, setLane] = useState<Lane | "all">(() => champBy(search.name)?.lane ?? "all");
+  const [champ, setChamp] = useState<string | null>(search.name || null);
   const [sort, setSort] = useState<"fresh" | "hot">("fresh");
   const [mine, setMine] = useState<Map<number, Kind>>(new Map());
   const [token, setToken] = useState<string | null>(null);
@@ -46,8 +90,32 @@ export function Board() {
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [noise, setNoiseOn] = useState(true);
-  const [view, setView] = useState<"stack" | "grid">("grid");
-  const [shown, setShown] = useState(8);
+  const [view, setView] = useState<WallView>("2");
+  const [shown, setShown] = useState(12);
+  const [salt, setSalt] = useState(1);
+  const [pinned, setPinned] = useState<"jumble" | "fresh" | "hot">("jumble");
+
+  useEffect(() => {
+    if (!search.name) {
+      setChamp(null);
+      return;
+    }
+    const person = champBy(search.name);
+    if (!person) return;
+    setChamp(search.name);
+    setLane(person.lane);
+  }, [search.name]);
+
+  function pickName(slug: string | null, nextLane?: Lane | "all") {
+    setChamp(slug);
+    if (slug) {
+      const person = champBy(slug);
+      if (person) setLane(person.lane);
+    } else if (nextLane) {
+      setLane(nextLane);
+    }
+    void navigate({ search: { name: slug ?? "" }, replace: true });
+  }
 
   useEffect(() => {
     let booth = localStorage.getItem(TOKEN_KEY);
@@ -57,8 +125,8 @@ export function Board() {
     }
     setToken(booth);
     setNoiseOn(loadNoise());
-    const saved = localStorage.getItem("grc-view");
-    if (saved === "grid" || saved === "stack") setView(saved);
+    setView(readView());
+    setSalt(freshSalt());
     let cancel = false;
     myVotes({ data: booth })
       .then((rows) => {
@@ -72,10 +140,8 @@ export function Board() {
   }, []);
 
   useEffect(() => {
-    setShown(8);
-  }, [lane, champ, sort]);
-
-  const visibleChamps = CHAMPS.filter((item) => lane === "all" || item.lane === lane);
+    setShown(view === "4" ? 16 : view === "3" ? 12 : 8);
+  }, [lane, champ, sort, view]);
 
   const pool = useMemo(() => {
     return memes.filter((meme) => {
@@ -95,7 +161,11 @@ export function Board() {
     return [...rows].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
   }, [pool, featured, sort]);
 
-  const wall = useMemo(() => (featured ? [featured, ...rest] : []), [featured, rest]);
+  const wall = useMemo(() => {
+    const rows = featured ? [featured, ...rest] : [];
+    if (pinned !== "jumble" || lane !== "all" || champ) return rows;
+    return dealSpread(rows, salt);
+  }, [featured, rest, pinned, salt, lane, champ]);
   const visibleWall = wall.slice(0, shown);
 
   const standings = useMemo(() => {
@@ -130,21 +200,40 @@ export function Board() {
     }
   }
 
-  async function onSubmit(draft: Draft) {
+  async function onReport(meme: Meme, reason: ReportReason) {
+    if (!token) {
+      setNote("The booth is still opening. Try the report again in a second.");
+      return;
+    }
+    setNote(null);
+    try {
+      await reportMeme({ data: { id: meme.id, token, reason } });
+      setMemes((current) => current.filter((item) => item.id !== meme.id));
+      setNote("Pulled off the wall. It stays down until the house puts it back.");
+    } catch (err) {
+      setNote(messageOf(err));
+    }
+  }
+
+  async function onSubmit(draft: Draft & StampChecks) {
+    if (!token) {
+      setError("The booth is still opening. Try again in a second.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      const created = await createMeme({ data: draft });
-      setMemes((current) => [created, ...current.filter((item) => item.id !== created.id)]);
-      setTallies((current) => {
-        const found = current.some((row) => row.slug === created.champSlug);
-        if (!found) return [...current, { slug: created.champSlug, posts: 1, rekt: created.rekt }];
-        return current.map((row) =>
-          row.slug === created.champSlug ? { ...row, posts: row.posts + 1, rekt: row.rekt + created.rekt } : row,
-        );
+      await createMeme({
+        data: {
+          ...draft,
+          token,
+          age13: draft.age13 === true,
+          terms: draft.terms === true,
+          ladder: draft.ladder === true,
+        },
       });
       setComposerOpen(false);
-      setNote("Stamped. The group chat is unwell.");
+      setNote("Sent for review. It will not show on the wall until the house approves it.");
       playPit("stamp");
     } catch (err) {
       setError(messageOf(err));
@@ -155,135 +244,119 @@ export function Board() {
 
   return (
     <div className="min-h-dvh bg-ink text-paper">
-      <header className="border-b-2 border-paper/15">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-5 sm:flex-row sm:items-end sm:justify-between">
+      <header className="border-b-2 border-paper/10">
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="font-display flex items-center gap-2 text-xs tracking-widest text-gold uppercase">
               <Ticket className="size-4" aria-hidden />
               Public names. Bad timing.
             </p>
-            <h1 className="mt-2 font-display text-5xl leading-none tracking-tight sm:text-6xl">
+            <h1 className="mt-1 font-display text-3xl leading-none tracking-tight sm:text-5xl">
               GET REKT
-              <span className="block text-rekt">CHAMP</span>
+              <span className="text-rekt"> CHAMP</span>
             </h1>
           </div>
-          <p className="max-w-sm text-sm leading-relaxed text-paper/75 sm:text-right">
-            Big public names, small dignity, T-rated. Spin a house line. The meme is already losing. {IDEA_CREDIT}.
-          </p>
+          <p className="hidden max-w-sm text-sm leading-snug text-paper/70 sm:block sm:text-right">{IDEA_CREDIT}</p>
         </div>
-          <nav aria-label="Site" className="mx-auto flex max-w-6xl flex-wrap gap-2 px-4 pb-4 text-sm">
-            <Link to="/press" className="inline-flex h-11 items-center rounded-full border-2 border-paper/30 px-4 font-semibold">
-              Press
-            </Link>
-            <Link to="/roadmap" className="inline-flex h-11 items-center rounded-full border-2 border-paper/30 px-4 font-semibold">
-              Roadmap
-            </Link>
-            <Link to="/contributors" className="inline-flex h-11 items-center rounded-full border-2 border-paper/30 px-4 font-semibold">
-              Contributors
-            </Link>
-            <a href={SITE_URL} className="inline-flex h-11 items-center rounded-full bg-gold px-4 font-semibold text-ink">
-              Website
-            </a>
-            <a href={REPO_URL} className="inline-flex h-11 items-center rounded-full bg-paper px-4 font-semibold text-ink">
-              GitHub
-            </a>
-          </nav>
+        <div className="mx-auto max-w-6xl px-4 pb-3">
+          <SiteNav />
+        </div>
       </header>
 
       <div
         className={
-          view === "grid"
-            ? "mx-auto max-w-[96rem] px-3 py-4 sm:px-4"
-            : "mx-auto grid max-w-6xl gap-6 px-4 py-5 lg:grid-cols-[15rem_minmax(0,1fr)_15rem]"
+          view === "list"
+            ? "mx-auto grid max-w-6xl gap-6 px-3 py-3 lg:grid-cols-[minmax(0,1fr)_16rem]"
+            : view === "4"
+              ? "mx-auto max-w-[110rem] px-3 py-3"
+              : view === "3"
+                ? "mx-auto max-w-[90rem] px-3 py-3"
+                : "mx-auto max-w-5xl px-3 py-3"
         }
       >
-        <aside className={view === "grid" ? "hidden" : "hidden lg:block"}>
-          <p className="font-display text-xs tracking-widest text-paper/60 uppercase">The roster</p>
-          <ul className="mt-3 space-y-1">
-            {CHAMPS.map((item) => {
-              const on = champ === item.slug;
-              return (
-                <li key={item.slug}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setChamp(on ? null : item.slug);
-                      setLane(item.lane);
-                    }}
-                    className={
-                      on
-                        ? "flex h-11 w-full items-center justify-between rounded-full bg-paper px-3 text-left font-semibold text-ink"
-                        : "flex h-11 w-full items-center justify-between rounded-full px-3 text-left text-paper/80 hover:bg-ink-2"
-                    }
-                  >
-                    <span>{item.short}</span>
-                    <span className="text-xs tracking-widest uppercase">{item.lane}</span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </aside>
-
         <main className="min-w-0">
-          <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
-            {LANES.map((item) => (
+          <div className="pit-dock sticky top-0 z-20 mb-3 space-y-2 rounded-card p-2">
+            <div className="flex gap-2 overflow-x-auto" role="group" aria-label="Wall">
+              {LANES.map((item) => (
+                <FilterChip
+                  key={item.id}
+                  on={lane === item.id && !champ}
+                  label={item.label}
+                  onClick={() => {
+                    pickName(null, item.id);
+                    if (item.id === "all") {
+                      setPinned("jumble");
+                      setSalt(freshSalt());
+                    }
+                  }}
+                />
+              ))}
+              <span className="mx-1 w-px shrink-0 self-stretch bg-paper/20" aria-hidden />
               <FilterChip
-                key={item.id}
-                on={lane === item.id && !champ}
-                label={item.label}
+                on={pinned === "jumble" && lane === "all" && !champ}
+                label="Jumble"
                 onClick={() => {
-                  setLane(item.id);
-                  setChamp(null);
+                  pickName(null, "all");
+                  setPinned("jumble");
+                  setSalt(freshSalt());
+                  setShown(view === "4" ? 16 : 12);
+                  playPit("loop");
                 }}
               />
-            ))}
-          </div>
-          <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
-            {visibleChamps.map((item) => (
+              <FilterChip on={pinned === "fresh"} label="New" onClick={() => { setPinned("fresh"); setSort("fresh"); }} />
+              <FilterChip on={pinned === "hot"} label="Hot" onClick={() => { setPinned("hot"); setSort("hot"); }} />
+              <span className="mx-1 w-px shrink-0 self-stretch bg-paper/20" aria-hidden />
+              {(
+                [
+                  ["2", "2"],
+                  ["3", "3"],
+                  ["4", "4"],
+                  ["list", "List"],
+                ] as const
+              ).map(([id, label]) => (
+                <FilterChip
+                  key={id}
+                  on={view === id}
+                  label={label}
+                  onClick={() => {
+                    setView(id);
+                    localStorage.setItem("grc-view", id);
+                  }}
+                />
+              ))}
               <FilterChip
-                key={item.slug}
-                on={champ === item.slug}
-                label={item.short}
-                onClick={() => setChamp(champ === item.slug ? null : item.slug)}
+                on={noise}
+                label={noise ? "Sound" : "Muted"}
+                onClick={() => {
+                  const next = !noise;
+                  setNoiseOn(next);
+                  setNoise(next);
+                  if (next) playPit("loop");
+                }}
               />
-            ))}
-          </div>
-
-          <div className="mb-4 flex flex-wrap items-end gap-3">
-            <div className="flex flex-wrap gap-2" role="group" aria-label="Sort">
-              <FilterChip on={sort === "fresh"} label="New" onClick={() => setSort("fresh")} />
-              <FilterChip on={sort === "hot"} label="Hot" onClick={() => setSort("hot")} />
             </div>
-            <div className="flex flex-wrap gap-2" role="group" aria-label="View">
-              <FilterChip
-                on={view === "stack"}
-                label="List"
-                onClick={() => {
-                  setView("stack");
-                  localStorage.setItem("grc-view", "stack");
-                }}
-              />
-              <FilterChip
-                on={view === "grid"}
-                label="2×2"
-                onClick={() => {
-                  setView("grid");
-                  localStorage.setItem("grc-view", "grid");
-                }}
-              />
-            </div>
-            <FilterChip
-              on={noise}
-              label={noise ? "Sound on" : "Sound off"}
-              onClick={() => {
-                const next = !noise;
-                setNoise(next);
-                setNoiseOn(next);
-                if (next) playPit("loop");
-              }}
-            />
-            <p className="text-sm text-paper/60 tabular-nums">{total} on the wall</p>
+            {lane !== "all" ? (
+              <div className="flex gap-2 overflow-x-auto" role="group" aria-label="Names">
+                <FilterChip on={!champ} label="Everyone" onClick={() => pickName(null, lane)} />
+                {CHAMPS.filter((item) => item.lane === lane).map((item) => (
+                  <FilterChip
+                    key={item.slug}
+                    on={champ === item.slug}
+                    label={item.short}
+                    onClick={() => pickName(champ === item.slug ? null : item.slug)}
+                  />
+                ))}
+              </div>
+            ) : null}
+            <p className="px-1 text-sm text-paper/60">
+              {champ
+                ? champBy(champ)?.name
+                : lane === "views"
+                  ? "By Hand, All In, or Both."
+                  : pinned === "jumble" && lane === "all"
+                    ? `${total} jokes, one of each name`
+                    : `${total} on the wall`}
+            </p>
           </div>
 
           {note ? (
@@ -292,32 +365,42 @@ export function Board() {
             </p>
           ) : null}
 
-          {view === "grid" && visibleWall.length > 0 ? (
+          {view !== "list" && visibleWall.length > 0 ? (
             <div className="pb-32">
-              <div className="sticker-grid grid grid-cols-2 gap-3 sm:gap-4">
+              <div
+                className={`grid gap-3 ${
+                  view === "4"
+                    ? "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
+                    : view === "3"
+                      ? "grid-cols-2 md:grid-cols-3"
+                      : "grid-cols-1 min-[520px]:grid-cols-2"
+                }`}
+              >
                 {visibleWall.map((meme) => (
                   <MemeCard
                     key={meme.id}
                     meme={meme}
                     compact
-                    featured={meme.id === featured?.id}
+                    dense={view === "3" || view === "4"}
+                    featured={pinned !== "jumble" && meme.id === featured?.id}
                     mine={mine.get(meme.id) ?? null}
                     pending={pendingId === meme.id}
                     onReact={(kind) => onReact(meme, kind)}
+                    onReport={(reason) => onReport(meme, reason)}
                   />
                 ))}
               </div>
               {visibleWall.length < wall.length ? (
                 <button
                   type="button"
-                  onClick={() => setShown((count) => count + 8)}
+                  onClick={() => setShown((count) => count + 12)}
                   className="mx-auto mt-5 flex h-12 items-center rounded-full bg-paper px-5 font-display tracking-wide text-ink uppercase"
                 >
                   More memes ({wall.length - visibleWall.length} left)
                 </button>
               ) : null}
             </div>
-          ) : view === "stack" && featured ? (
+          ) : view === "list" && featured ? (
             <>
               <MemeCard
                 meme={featured}
@@ -325,6 +408,7 @@ export function Board() {
                 mine={mine.get(featured.id) ?? null}
                 pending={pendingId === featured.id}
                 onReact={(kind) => onReact(featured, kind)}
+                onReport={(reason) => onReport(featured, reason)}
               />
               <div className="mt-5 space-y-5 pb-32">
                 {rest.slice(0, Math.max(0, shown - 1)).map((meme) => (
@@ -334,12 +418,13 @@ export function Board() {
                     mine={mine.get(meme.id) ?? null}
                     pending={pendingId === meme.id}
                     onReact={(kind) => onReact(meme, kind)}
+                    onReport={(reason) => onReport(meme, reason)}
                   />
                 ))}
                 {shown < wall.length ? (
                   <button
                     type="button"
-                    onClick={() => setShown((count) => count + 8)}
+                    onClick={() => setShown((count) => count + 12)}
                     className="flex h-12 items-center rounded-full bg-paper px-5 font-display tracking-wide text-ink uppercase"
                   >
                     More memes ({wall.length - shown} left)
@@ -355,7 +440,7 @@ export function Board() {
           )}
         </main>
 
-        <aside className={view === "grid" ? "hidden" : "hidden lg:block"}>
+        <aside className={view === "list" ? "hidden lg:block" : "hidden"}>
           <div className="rounded-card border-2 border-paper/20 bg-ink-2 p-4">
             <p className="font-display text-xs tracking-widest text-gold uppercase">Most rekt</p>
             <ol className="mt-3 space-y-2">
@@ -365,10 +450,7 @@ export function Board() {
                   <li key={row.slug}>
                     <button
                       type="button"
-                      onClick={() => {
-                        setChamp(row.slug);
-                        if (person) setLane(person.lane);
-                      }}
+                      onClick={() => pickName(row.slug)}
                       className="flex h-11 w-full items-center gap-3 text-left"
                     >
                       <span className="font-display w-5 text-rekt">{index + 1}</span>
@@ -398,10 +480,10 @@ export function Board() {
           setError(null);
           setComposerOpen(true);
         }}
-        className="pit-fab fixed right-4 bottom-4 z-30 inline-flex h-14 items-center gap-2 rounded-full bg-rekt px-5 font-display tracking-wide text-paper uppercase"
+        className="pit-fab fixed bottom-4 left-4 z-30 inline-flex h-14 items-center gap-2 rounded-full bg-rekt px-5 font-display tracking-wide text-paper uppercase sm:left-auto sm:right-4"
       >
         <Plus className="size-5" aria-hidden />
-        Stamp a roast
+        Send a roast
       </button>
 
       <Composer
@@ -423,8 +505,8 @@ function FilterChip({ on, label, onClick }: { on: boolean; label: string; onClic
       onClick={onClick}
       className={
         on
-          ? "h-11 shrink-0 rounded-full bg-paper px-4 font-semibold text-ink"
-          : "h-11 shrink-0 rounded-full border-2 border-paper/30 px-4 font-semibold text-paper"
+          ? "h-9 shrink-0 rounded-full bg-paper px-3 text-sm font-semibold text-ink"
+          : "h-9 shrink-0 rounded-full border-2 border-paper/30 px-3 text-sm font-semibold text-paper"
       }
     >
       {label}

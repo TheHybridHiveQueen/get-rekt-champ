@@ -36,7 +36,12 @@ The app listens on port 8080. With no `DATABASE_URL`, it uses an embedded Postgr
 
 ## Add a joke
 
-New roasts land in [`src/lib/catalog.ts`](src/lib/catalog.ts). Add a champ, or add top / bottom / quote / score lines for someone already on the roster, and open a pull request. Keep it short, silly, and inside the house rules. Card memes are listed next to the roster in that same file.
+Two ways in:
+
+1. **Stamp it in the app.** Pick a public name, spin a house line, and optionally paste a public `https` link that ends in `.gif`. The server refuses a second copy of the same stamp, and it refuses GIF links that are not a public file (private hosts, raw IPs, pages, or redirects off the public web).
+2. **Add a line to the house book.** Edit [`src/lib/catalog.ts`](src/lib/catalog.ts). One short T-rated line for a name already on the roster, then open a pull request. Card memes sit next to the roster in that same file.
+
+Say what you changed and why it is a joke. The checks are listed on `/contributors`.
 
 ## License
 

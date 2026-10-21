@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { SiteFooter } from "@/components/site-footer";
+import { SiteNav } from "@/components/site-nav";
 import { GITHUB_URL, IDEA_CREDIT, REPO_URL, SITE_URL } from "@/lib/credit";
 import { SECURITY_MANIFEST } from "@/lib/security-manifest";
 
@@ -23,13 +24,13 @@ function Contributors() {
   return (
     <div className="min-h-dvh bg-ink text-paper">
       <header className="border-b-2 border-paper/15">
-        <div className="mx-auto flex max-w-3xl flex-wrap items-end justify-between gap-3 px-4 py-5">
+        <div className="mx-auto max-w-3xl px-4 py-5">
           <p className="font-display text-2xl leading-none">
             GET REKT <span className="text-rekt">CHAMP</span>
           </p>
-          <Link to="/" className="text-sm text-paper underline decoration-rekt underline-offset-4">
-            Back to the pit
-          </Link>
+          <div className="mt-4">
+            <SiteNav />
+          </div>
         </div>
       </header>
       <article className="mx-auto max-w-3xl px-4 py-8">
@@ -39,18 +40,59 @@ function Contributors() {
           {IDEA_CREDIT}. The pit is open source. A joke lands when a pull request does.
         </p>
 
-        <ul className="mt-6 space-y-3">
+        <section className="mt-8" aria-labelledby="how-title">
+          <h2 id="how-title" className="font-display text-2xl uppercase">
+            Add something
+          </h2>
+          <ol className="mt-4 space-y-3">
+            <li className="stamp-card rounded-card p-4">
+              <p className="font-display text-lg uppercase">1. Stamp it here</p>
+              <p className="mt-1 text-ink/75">
+                Open the pit, hit Stamp a roast, pick a name, and spin a house line. A GIF is optional.
+              </p>
+              <Link to="/" search={{ name: "" }} className="mt-3 inline-flex h-11 items-center rounded-full bg-rekt px-4 font-semibold text-paper">
+                Open the pit
+              </Link>
+            </li>
+            <li className="stamp-card rounded-card p-4">
+              <p className="font-display text-lg uppercase">2. Add a house line</p>
+              <p className="mt-1 text-ink/75">
+                New wording lives in <span className="font-semibold">src/lib/catalog.ts</span>. One short line for a name already on the roster. Then open a pull request.
+              </p>
+              <a
+                href={`${REPO_URL}/issues/new?title=House%20line&body=${encodeURIComponent("Name:\nLine:\nWhy it is a joke, not a personal attack:\n")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-flex h-11 items-center rounded-full bg-paper px-4 font-semibold text-ink"
+              >
+                Start a GitHub issue
+              </a>
+            </li>
+            <li className="stamp-card rounded-card p-4">
+              <p className="font-display text-lg uppercase">3. What gets refused</p>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-ink/75">
+                <li>Lines that are not in the house book.</li>
+                <li>The same stamp twice.</li>
+                <li>GIF links that are not public https files ending in .gif.</li>
+                <li>Private hosts, raw IP addresses, pages, and redirects off the public web.</li>
+                <li>Anything past a joke about a public name.</li>
+              </ul>
+            </li>
+          </ol>
+        </section>
+
+        <ul className="mt-8 space-y-3">
           <li className="stamp-card rounded-card p-4">
             <p className="font-display text-xl uppercase">TheHybridHiveQueen</p>
             <p className="mt-1 text-ink/70">Idea, house book, and the first stamp.</p>
             <p className="mt-3 flex flex-wrap gap-3 text-sm">
-              <a href={SITE_URL} className="font-semibold text-rekt underline underline-offset-4">
+              <a href={SITE_URL} target="_blank" rel="noopener noreferrer" className="font-semibold text-rekt underline underline-offset-4">
                 thehybridhivequeen.com
               </a>
-              <a href={GITHUB_URL} className="font-semibold underline underline-offset-4">
+              <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="font-semibold underline underline-offset-4">
                 GitHub
               </a>
-              <a href={REPO_URL} className="font-semibold underline underline-offset-4">
+              <a href={REPO_URL} target="_blank" rel="noopener noreferrer" className="font-semibold underline underline-offset-4">
                 This repo
               </a>
             </p>

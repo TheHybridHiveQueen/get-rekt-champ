@@ -1,6 +1,6 @@
 import { NOW_PACK } from "@/lib/now-pack";
 
-export type Lane = "nerds" | "titans" | "culture";
+export type Lane = "nerds" | "titans" | "culture" | "views";
 export type Format = "impact" | "quote" | "score";
 export type Slot = "top" | "bottom" | "quote" | "score";
 export type Kind = "rekt" | "defend" | "crown";
@@ -59,6 +59,7 @@ export const LANES: { id: Lane | "all"; label: string }[] = [
   { id: "nerds", label: "Nerds" },
   { id: "titans", label: "Titans" },
   { id: "culture", label: "Culture" },
+  { id: "views", label: "Views" },
 ];
 
 export const ALIAS_A: readonly string[] = [
@@ -110,6 +111,9 @@ export const CHAMPS: Champ[] = [
   { slug: "oprah", name: "Oprah Winfrey", short: "Oprah", lane: "culture", role: "You-get-a-moment", initials: "OW", pattern: "ink" },
   { slug: "ronaldo", name: "Cristiano Ronaldo", short: "CR7", lane: "culture", role: "Rent-is-due finisher", initials: "CR", pattern: "dots" },
   { slug: "now", name: "Right now", short: "Now", lane: "culture", role: "2020s and later", initials: "NOW", pattern: "grid" },
+  { slug: "hand", name: "By Hand", short: "By Hand", lane: "views", role: "Pencil camp", initials: "BH", pattern: "stripes" },
+  { slug: "allbot", name: "All In", short: "All In", lane: "views", role: "Bot camp", initials: "IN", pattern: "dots" },
+  { slug: "both", name: "Both", short: "Both", lane: "views", role: "Mix camp", initials: "MX", pattern: "grid" },
 ];
 
 function beat(champ: string, slot: Slot, n: number, text: string): Beat {
@@ -297,6 +301,36 @@ export const BEATS: Beat[] = [
   beat("now", "quote", 1, "If the joke needs a DVD menu, it does not get a stamp."),
   beat("now", "quote", 2, "The group chat moved on. So did the pit."),
   beat("now", "score", 1, "Decade: this one. Reruns: declined."),
+
+  beat("hand", "top", 1, "HAPPY ACCIDENTS"),
+  beat("hand", "top", 2, "THE PALETTE"),
+  beat("hand", "top", 3, "THE SIGN"),
+  beat("hand", "bottom", 1, "NOT A PROMPT"),
+  beat("hand", "bottom", 2, "WAS LUNCH"),
+  beat("hand", "bottom", 3, "SAID NO"),
+  beat("hand", "quote", 1, "Happy little accidents. A prompt was not invited."),
+  beat("hand", "quote", 2, "The sign said no. The brush stayed anyway."),
+  beat("hand", "score", 1, "Hands: messy. Shortcut: declined."),
+
+  beat("allbot", "top", 1, "LET IT COOK"),
+  beat("allbot", "top", 2, "NO THOUGHTS"),
+  beat("allbot", "top", 3, "CHATGPT"),
+  beat("allbot", "bottom", 1, "THE CHAIR AGREED"),
+  beat("allbot", "bottom", 2, "JUST PROMPTS"),
+  beat("allbot", "bottom", 3, "DUDE"),
+  beat("allbot", "quote", 1, "Feet up. The laptop has the job."),
+  beat("allbot", "quote", 2, "No thoughts. Just prompts. The cat approved."),
+  beat("allbot", "score", 1, "Hands: in pockets. Output: immediate."),
+
+  beat("both", "top", 1, "THE WINK"),
+  beat("both", "top", 2, "ASK A HUMAN"),
+  beat("both", "top", 3, "ONE FACE"),
+  beat("both", "bottom", 1, "WAS HALF"),
+  beat("both", "bottom", 2, "THE BOTS AGREED"),
+  beat("both", "bottom", 3, "TWO CAMPS"),
+  beat("both", "quote", 1, "One eye stayed human. The other clocked in."),
+  beat("both", "quote", 2, "The bots paused and asked a person."),
+  beat("both", "score", 1, "Hands: yes. Tools: also yes."),
 ];
 
 export type Seed = {
@@ -379,6 +413,9 @@ export const CARD_MEMES: Record<string, { src: string; alt: string }> = {
   oprah: { src: giphy("QXPdeQwJYXv6wKXy2G"), alt: "Oprah Winfrey saying you get a car." },
   ronaldo: { src: giphy("FKKT0Ro1ZuuYivPgEs"), alt: "Cristiano Ronaldo celebrating." },
   now: { src: NOW_PACK[0]?.gif ?? "", alt: "A current meme." },
+  hand: { src: giphy("bBPKIt6h9yCcw"), alt: "Bob Ross calling them happy little accidents." },
+  allbot: { src: giphy("yNV22kqsrOQUPSzRtg"), alt: "No thoughts, just prompts." },
+  both: { src: giphy("9Ecsu24ovcVBwBknXx"), alt: "Cyborg winking with one human eye." },
 };
 
 export const HOUSE_LOOPS: HouseLoop[] = Object.entries(CARD_MEMES).map(([champ, meme]) => ({

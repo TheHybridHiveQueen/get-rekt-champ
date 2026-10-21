@@ -12,6 +12,11 @@ import {
   type Meme,
   type Tally,
 } from "@/lib/catalog";
+import { confirmPublicGif, gifProblem } from "@/lib/gif-check";
+import { isReportReason, type ReportReason } from "@/lib/reports";
+import { stampCheckError, TERMS_VERSION } from "@/lib/agreements";
+import { blockWhy, gifKey, isBanReason, MOD_RULES } from "@/lib/automod";
+import { parseGate } from "@/lib/review-gate";
 import { NOW_PACK } from "@/lib/now-pack";
 
 const UUID =
@@ -93,14 +98,15 @@ async function ensureSeed(sql: Awaited<ReturnType<typeof import("@/lib/db").getS
   }
   await syncSeedLines(sql);
   await insertNowPack(sql);
+  await syncNowChamps(sql);
+  await pruneDroppedViews(sql);
 }
 
 async function insertNowPack(sql: Awaited<ReturnType<typeof import("@/lib/db").getSql>>) {
-  const existing = await sql<{ n: number }>`select count(*)::int as n from memes where seed_key like 'now-%'`;
-  if ((existing[0]?.n ?? 0) >= NOW_PACK.length) return;
   const have = await sql<{ seed_key: string }>`select seed_key from memes where seed_key like 'now-%'`;
   const got = new Set(have.map((row) => row.seed_key));
   const missing = NOW_PACK.filter((card) => !got.has(card.key));
+  if (missing.length === 0) return;
   for (let offset = 0; offset < missing.length; offset += 40) {
     const chunk = missing.slice(offset, offset + 40);
     const params: Array<string | number> = [];
@@ -132,6 +138,43 @@ async function insertNowPack(sql: Awaited<ReturnType<typeof import("@/lib/db").g
       params,
     );
   }
+}
+
+async function syncNowChamps(sql: Awaited<ReturnType<typeof import("@/lib/db").getSql>>) {
+  for (let offset = 0; offset < NOW_PACK.length; offset += 80) {
+    const chunk = NOW_PACK.slice(offset, offset + 80);
+    const params: string[] = [];
+    const values: string[] = [];
+    chunk.forEach((card, index) => {
+      const base = index * 2;
+      values.push(`($${base + 1}, $${base + 2})`);
+      params.push(card.key, card.champ);
+    });
+    await sql.query(
+      `update memes as m
+       set champ_slug = v.champ
+       from (values ${values.join(", ")}) as v(seed_key, champ)
+       where m.seed_key = v.seed_key
+         and m.champ_slug is distinct from v.champ`,
+      params,
+    );
+  }
+}
+
+async function pruneDroppedViews(sql: Awaited<ReturnType<typeof import("@/lib/db").getSql>>) {
+  const keep = NOW_PACK.filter((card) => card.champ === "hand" || card.champ === "allbot" || card.champ === "both").map(
+    (card) => card.key,
+  );
+  if (keep.length === 0) return;
+  const params = keep;
+  const list = keep.map((_, index) => `$${index + 1}`).join(", ");
+  await sql.query(
+    `delete from memes
+     where champ_slug in ('hand', 'allbot', 'both')
+       and seed_key is not null
+       and seed_key not in (${list})`,
+    params,
+  );
 }
 
 async function syncSeedLines(sql: Awaited<ReturnType<typeof import("@/lib/db").getSql>>) {
@@ -202,20 +245,9 @@ function assertDraft(data: unknown): Draft {
 function handmadeGif(value: unknown): string {
   if (value == null || value === "") return "";
   if (typeof value !== "string") throw new Error("That GIF link is not a link.");
-  const trimmed = value.trim();
-  if (trimmed.length > 400) throw new Error("That GIF link is too long.");
-  let url: URL;
-  try {
-    url = new URL(trimmed);
-  } catch {
-    throw new Error("Paste a direct https link ending in .gif.");
-  }
-  if (url.protocol !== "https:" || url.username || url.password) {
-    throw new Error("Handmade GIFs have to be a plain https link.");
-  }
-  const path = url.pathname.toLowerCase();
-  if (!path.endsWith(".gif")) throw new Error("Paste a direct .gif file you made by hand.");
-  return url.toString();
+  const problem = gifProblem(value);
+  if (problem) throw new Error(problem);
+  return new URL(value.trim()).toString();
 }
 
 function assertVote(data: unknown): { id: number; token: string; kind: Kind } {
@@ -239,12 +271,14 @@ export const listMemes = createServerFn({ method: "GET" }).handler(async () => {
     select id, champ_slug, format, line_a, line_b, alias_a, alias_b, rekt, defend, crown, gif_url,
       to_char(created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at
     from memes
+    where status = 'live'
     order by created_at desc
-    limit 420
+    limit 900
   `;
   const tallies = await sql<Tally>`
     select champ_slug as slug, count(*)::int as posts, coalesce(sum(rekt), 0)::int as rekt
     from memes
+    where status = 'live'
     group by champ_slug
   `;
   return { memes: memes.map(toMeme), tallies };
@@ -262,21 +296,133 @@ export const myVotes = createServerFn({ method: "GET" })
     return rows.map((row) => ({ memeId: row.meme_id, kind: row.kind }));
   });
 
+function assertStamp(data: unknown): Draft & { token: string; acceptedTerms: true } {
+  const draft = assertDraft(data);
+  const row = data && typeof data === "object" ? (data as Record<string, unknown>) : {};
+  const token = row.token;
+  if (typeof token !== "string" || !UUID.test(token)) throw new Error("Bad booth token.");
+  const missing = stampCheckError({
+    age13: row.age13 === true,
+    terms: row.terms === true,
+    ladder: row.ladder === true,
+  });
+  if (missing) throw new Error(missing);
+  return { ...draft, token, acceptedTerms: true };
+}
+
 export const createMeme = createServerFn({ method: "POST" })
-  .validator(assertDraft)
+  .validator(assertStamp)
   .handler(async ({ data }) => {
     const { getSql } = await import("@/lib/db");
+    const { charge, assertUploadsOpen, networkHash, recordViolation } = await import("@/lib/safety.server");
+    const gifProblemText = await confirmPublicGif(data.gifUrl);
+    if (gifProblemText) throw new Error(gifProblemText);
     const sql = await getSql();
-    try {
-      const rows = await sql.query<MemeRow>(
-        `insert into memes (champ_slug, format, line_a, line_b, alias_a, alias_b, gif_url)
-         values ($1, $2, $3, $4, $5, $6, $7)
-         returning ${MEME_RETURNING}`,
-        [data.champSlug, data.format, data.lineA, data.lineB, data.aliasA, data.aliasB, data.gifUrl],
+    await assertUploadsOpen(sql, data.token);
+    await charge(sql, "stamp", data.token);
+    const key = gifKey(data.gifUrl);
+    if (key) {
+      const banned = await sql.query<{ gif_key: string }>(
+        `select gif_key from blocked_gifs where gif_key = $1 limit 1`,
+        [key],
       );
-      const row = rows[0];
-      if (!row) throw new Error("The stamp did not stick.");
-      return toMeme(row);
+      if (banned.length > 0) {
+        throw new Error(
+          await recordViolation(
+            sql,
+            data.token,
+            networkHash(),
+            "No sending a blocked file again",
+            "This GIF was already blocked. Sending it again is cheating the check.",
+          ),
+        );
+      }
+    }
+    if (data.gifUrl) {
+      const { scanGifUrl } = await import("@/lib/automod-scan.server");
+      const scan = await scanGifUrl(data.gifUrl);
+      const knownFile = await sql.query<{ sha256: string }>(
+        `select sha256 from blocked_hashes where sha256 = $1 limit 1`,
+        [scan.fileHash],
+      );
+      if (knownFile.length > 0) {
+        throw new Error(
+          await recordViolation(
+            sql,
+            data.token,
+            networkHash(),
+            "No sending a blocked file again",
+            "This is the same file that was already blocked, under a different link.",
+          ),
+        );
+      }
+      if (scan.verdict === "block") {
+        const why = blockWhy(scan.scores);
+        if (key) {
+          await sql.query(
+            `insert into blocked_gifs (gif_key, reason) values ($1, 'explicit') on conflict (gif_key) do nothing`,
+            [key],
+          );
+        }
+        await sql.query(
+          `insert into blocked_hashes (sha256, reason) values ($1, 'explicit') on conflict (sha256) do nothing`,
+          [scan.fileHash],
+        );
+        throw new Error(await recordViolation(sql, data.token, networkHash(), why.rule, why.why));
+      }
+      if (scan.verdict === "review") {
+        const dupes = await sql<{ id: number }>`
+          select id from memes
+          where champ_slug = ${data.champSlug}
+            and line_a = ${data.lineA}
+            and line_b = ${data.lineB}
+            and coalesce(gif_url, '') = ${data.gifUrl}
+            and status <> 'hidden'
+          limit 1
+        `;
+        if (dupes.length > 0) throw new Error("That stamp is already waiting or already on the wall.");
+        try {
+          await sql.query(
+            `insert into memes (champ_slug, format, line_a, line_b, alias_a, alias_b, gif_url, status, submitter_token, submitter_net, accepted_terms, terms_version, terms_accepted_at, automod_note)
+             values ($1, $2, $3, $4, $5, $6, $7, 'pending', $8, $9, true, $10, now(), $11)`,
+            [
+              data.champSlug,
+              data.format,
+              data.lineA,
+              data.lineB,
+              data.aliasA,
+              data.aliasB,
+              data.gifUrl,
+              data.token,
+              networkHash(),
+              TERMS_VERSION,
+              "Scanner wants a closer look. Not a ban.",
+            ],
+          );
+        } catch (err) {
+          if (isUnique(err)) throw new Error("That combo already has a stamp. Spin it.");
+          throw err;
+        }
+        return { ok: true as const };
+      }
+    }
+    const dupes = await sql<{ id: number }>`
+      select id from memes
+      where champ_slug = ${data.champSlug}
+        and line_a = ${data.lineA}
+        and line_b = ${data.lineB}
+        and coalesce(gif_url, '') = ${data.gifUrl}
+        and status <> 'hidden'
+      limit 1
+    `;
+    if (dupes.length > 0) throw new Error("That stamp is already waiting or already on the wall.");
+    try {
+      await sql.query(
+        `insert into memes (champ_slug, format, line_a, line_b, alias_a, alias_b, gif_url, status, submitter_token, submitter_net, accepted_terms, terms_version, terms_accepted_at)
+         values ($1, $2, $3, $4, $5, $6, $7, 'pending', $8, $9, true, $10, now())`,
+        [data.champSlug, data.format, data.lineA, data.lineB, data.aliasA, data.aliasB, data.gifUrl, data.token, networkHash(), TERMS_VERSION],
+      );
+      return { ok: true as const };
     } catch (err) {
       if (isUnique(err)) throw new Error("That combo already has a stamp. Spin it.");
       throw err;
@@ -327,7 +473,7 @@ bump as (
       + case when exists (select 1 from flipped f where f.old_kind = 'crown') then -1 else 0 end
       + case when $3 = 'crown' and exists (select 1 from flipped) then 1 else 0 end
     ))
-  where m.id = $1
+  where m.id = $1 and m.status = 'live'
   returning ${MEME_RETURNING}
 )
 select bump.*,
@@ -339,7 +485,9 @@ export const reactToMeme = createServerFn({ method: "POST" })
   .validator(assertVote)
   .handler(async ({ data }) => {
     const { getSql } = await import("@/lib/db");
+    const { charge } = await import("@/lib/safety.server");
     const sql = await getSql();
+    await charge(sql, "vote", data.token);
     const rows = await sql.query<MemeRow & { my_kind: Kind | null }>(VOTE_SQL, [
       data.id,
       data.token,
@@ -350,3 +498,136 @@ export const reactToMeme = createServerFn({ method: "POST" })
     return { meme: toMeme(row), myKind: row.my_kind };
   });
 
+const REFUSED = "House review refused that.";
+
+function assertReport(data: unknown): { id: number; token: string; reason: ReportReason } {
+  if (!data || typeof data !== "object") throw new Error("That report missed.");
+  const d = data as Record<string, unknown>;
+  if (typeof d.id !== "number" || !Number.isInteger(d.id) || d.id < 1) throw new Error("That stamp wandered off.");
+  if (typeof d.token !== "string" || !UUID.test(d.token)) throw new Error("Bad booth token.");
+  if (!isReportReason(d.reason)) throw new Error("Pick a reason.");
+  return { id: d.id, token: d.token, reason: d.reason };
+}
+
+export const reportMeme = createServerFn({ method: "POST" })
+  .validator(assertReport)
+  .handler(async ({ data }) => {
+    const { getSql } = await import("@/lib/db");
+    const { charge } = await import("@/lib/safety.server");
+    const sql = await getSql();
+    await charge(sql, "report", data.token);
+    await sql.query(
+      `insert into reports (meme_id, token, reason)
+       select $1, $2, $3
+       where exists (select 1 from memes where id = $1 and status = 'live')
+       on conflict (meme_id, token) do nothing`,
+      [data.id, data.token, data.reason],
+    );
+    await sql.query(`update memes set status = 'hidden' where id = $1 and status = 'live'`, [data.id]);
+    return { ok: true as const };
+  });
+
+export type ReviewCard = {
+  id: number;
+  champSlug: string;
+  lineA: string;
+  lineB: string;
+  gifUrl: string;
+  status: "pending" | "hidden";
+  seeded: boolean;
+  reason: string | null;
+  automodNote: string;
+};
+
+export const reviewQueue = createServerFn({ method: "POST" })
+  .validator(parseGate)
+  .handler(async ({ data: gate }) => {
+    const { reviewAllowed } = await import("@/lib/safety.server");
+    if (!reviewAllowed(gate)) throw new Error(REFUSED);
+    const { getSql } = await import("@/lib/db");
+    const sql = await getSql();
+    await sql.query(`insert into mod_acceptances (mod_id, terms_version) values ($1, $2)`, [
+      gate.mode === "house" ? "house" : gate.id,
+      TERMS_VERSION,
+    ]);
+    const rows = await sql<{
+      id: number;
+      champ_slug: string;
+      line_a: string;
+      line_b: string;
+      gif_url: string;
+      status: "pending" | "hidden";
+      seed_key: string | null;
+      reason: string | null;
+      automod_note: string;
+    }>`
+      select m.id, m.champ_slug, m.line_a, m.line_b, m.gif_url, m.status, m.seed_key, m.automod_note,
+        (select r.reason from reports r where r.meme_id = m.id order by r.created_at desc limit 1) as reason
+      from memes m
+      where m.status in ('pending', 'hidden')
+      order by m.created_at desc
+      limit 80
+    `;
+    const queue: ReviewCard[] = rows.map((row) => ({
+      id: row.id,
+      champSlug: row.champ_slug,
+      lineA: row.line_a,
+      lineB: row.line_b,
+      gifUrl: row.gif_url,
+      status: row.status,
+      seeded: Boolean(row.seed_key),
+      reason: row.reason,
+      automodNote: row.automod_note,
+    }));
+    return { queue };
+  });
+
+export const reviewAct = createServerFn({ method: "POST" })
+  .validator((data: unknown) => {
+    const gate = parseGate(data);
+    const d = data as { memeId?: unknown; action?: unknown; banReason?: unknown };
+    if (typeof d.memeId !== "number" || !Number.isInteger(d.memeId) || d.memeId < 1) throw new Error("That stamp wandered off.");
+    if (d.action !== "approve" && d.action !== "drop" && d.action !== "violate") throw new Error("Pick an action.");
+    if (d.action === "violate" && !isBanReason(d.banReason)) throw new Error("Pick why it breaks the rules.");
+    return { gate, id: d.memeId, action: d.action, banReason: isBanReason(d.banReason) ? d.banReason : null };
+  })
+  .handler(async ({ data }) => {
+    const { reviewAllowed, recordViolation } = await import("@/lib/safety.server");
+    if (!reviewAllowed(data.gate)) throw new Error(REFUSED);
+    const { getSql } = await import("@/lib/db");
+    const sql = await getSql();
+    if (data.action === "violate") {
+      const rows = await sql.query<{ gif_url: string; submitter_token: string; submitter_net: string }>(
+        `select gif_url, submitter_token, submitter_net from memes where id = $1 and status in ('pending', 'hidden')`,
+        [data.id],
+      );
+      const row = rows[0];
+      if (!row) throw new Error("That stamp wandered off.");
+      const key = gifKey(row.gif_url);
+      if (key) {
+        await sql.query(
+          `insert into blocked_gifs (gif_key, reason) values ($1, $2) on conflict (gif_key) do nothing`,
+          [key, data.banReason],
+        );
+      }
+      const marked = MOD_RULES[data.banReason ?? "explicit"];
+      const note = row.submitter_token
+        ? await recordViolation(sql, row.submitter_token, row.submitter_net, marked.rule, marked.why)
+        : `The file is blocked. Rule: ${marked.rule}. Why: ${marked.why}`;
+      await sql.query(`update memes set status = 'hidden' where id = $1`, [data.id]);
+      return { ok: true as const, note };
+    }
+    if (data.action === "approve") {
+      const rows = await sql.query<{ gif_url: string }>(`select gif_url from memes where id = $1`, [data.id]);
+      const key = gifKey(rows[0]?.gif_url ?? "");
+      if (key) {
+        const banned = await sql.query(`select gif_key from blocked_gifs where gif_key = $1`, [key]);
+        if (banned.length > 0) throw new Error("That GIF is on the block list. It cannot go on the wall.");
+      }
+      await sql.query(`update memes set status = 'live' where id = $1 and status in ('pending', 'hidden')`, [data.id]);
+    } else {
+      await sql.query(`delete from memes where id = $1 and status in ('pending', 'hidden') and seed_key is null`, [data.id]);
+      await sql.query(`update memes set status = 'hidden' where id = $1 and seed_key is not null and status <> 'live'`, [data.id]);
+    }
+    return { ok: true as const };
+  });
