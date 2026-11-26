@@ -1,5 +1,7 @@
 # Get Rekt Champ
 
+**Agent entry:** [AGENTS.md](AGENTS.md) is the shared repository guide; [CLAUDE.md](CLAUDE.md) and [Copilot instructions](.github/copilot-instructions.md) point to it.
+
 A T-rated parody pit. Pick a public name, spin a line from the house book, and stamp it on the shared wall. The wall also carries a pack of 2020s memes, not reruns from the 90s.
 
 **Idea by the Brain of TheHybridHiveQueen.**
